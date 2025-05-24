@@ -20,6 +20,18 @@
   --gunmetal: #1b2432;
   --rich-black: #121420;
   --gradient-radial: radial-gradient(#403f4c, #2c2b3c, #1b2432, #121420);
+  --linen: #F7F3E9;
+  --isabelline: #F4F0E8;
+  --timberwolf: #D6CFC7;
+  --champagne-pink: #E8C4A0;
+  --text-primary: #2D3748;
+  --text-secondary: #4A5568;
+  --text-tertiary: #718096;
+  --success-bg: #48BB78;
+  --error-bg: #E53E3E;
+  --error-light: #FED7D7;
+  --border: #D6CFC7;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 * {

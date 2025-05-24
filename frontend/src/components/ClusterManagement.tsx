@@ -38,6 +38,36 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CloseIcon from '@mui/icons-material/Close';
 import CircularProgress from '@mui/material/CircularProgress';
 
+// 1. Main background
+const mainBackground = 'var(--linen)';
+// 2. Cluster card background and border
+const cardBackground = 'var(--isabelline)';
+const cardBorder = '1px solid var(--timberwolf)';
+const cardShadow = 'var(--shadow)';
+const cardRadius = 12;
+// 3. Primary text
+const textPrimary = 'var(--text-primary)';
+// 4. Secondary text
+const textSecondary = 'var(--text-secondary)';
+const textTertiary = 'var(--text-tertiary)';
+// 5. Status indicators
+const healthyStatus = { background: 'var(--success-bg)', color: '#fff', padding: '4px 12px', borderRadius: 16 };
+const errorStatus = { background: 'var(--error-bg)', color: '#fff', padding: '4px 12px', borderRadius: 16 };
+// 6. Buttons
+const primaryButton = { background: 'var(--champagne-pink)', color: textPrimary, fontWeight: 600, borderRadius: 3, px: 5, py: 1.7, boxShadow: 'var(--shadow)', textTransform: 'none', fontSize: '1.1rem', '&:hover': { background: '#d1a97e' } };
+const secondaryButton = { background: 'var(--timberwolf)', color: textPrimary, '&:hover': { background: '#bfb8b0' } };
+// 7. Error messages
+const errorMessage = { color: 'var(--error-bg)', background: 'var(--error-light)', padding: 12, borderRadius: 8 };
+// 8. Input fields
+const inputField = { background: '#fff', border: '1px solid var(--timberwolf)', color: textPrimary };
+const inputFocus = { border: '2px solid var(--champagne-pink)' };
+// 9. Action icons
+const deleteIcon = { color: 'var(--error-bg)', minWidth: 40, minHeight: 40 };
+const refreshIcon = { color: textSecondary, minWidth: 40, minHeight: 40 };
+const copyIcon = { color: textSecondary, minWidth: 40, minHeight: 40 };
+// 10. Navigation header
+const navHeader = { background: '#fff', color: textPrimary, borderBottom: '1px solid var(--timberwolf)' };
+
 const ClusterManagement = () => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
@@ -308,37 +338,29 @@ const ClusterManagement = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 3 } }}>
+    <Box sx={{ p: { xs: 1, sm: 3 }, background: mainBackground, minHeight: '100vh' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ color: colors.primary, fontWeight: 700 }}>
+        <Typography variant="h4" component="h1" sx={{ color: textPrimary, fontWeight: 700 }}>
           Cluster Management
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setOpenClusterDialog(true)}
-          sx={{
-            backgroundColor: colors.primary,
-            color: '#333',
-            fontWeight: 600,
-            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
-            '&:hover': {
-              backgroundColor: colors.timberwolf,
-            },
-          }}
+          sx={primaryButton}
         >
           Create Cluster
         </Button>
       </Box>
 
       {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
+        <Typography sx={errorMessage}>
           {error}
         </Typography>
       )}
 
       {success && (
-        <Typography color="success" sx={{ mb: 2 }}>
+        <Typography sx={{ color: healthyStatus.background, background: '#e6f4ea', padding: 1, borderRadius: 8, mb: 2 }}>
           {success}
         </Typography>
       )}
@@ -353,18 +375,19 @@ const ClusterManagement = () => {
           return (
             <Grid item xs={12} sm={6} md={4} key={cluster.id}>
               <Card elevation={4} sx={{
-                background: colors.linen,
-                color: colors.champagnePink,
-                borderRadius: 12,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                background: cardBackground,
+                color: textPrimary,
+                borderRadius: cardRadius,
+                boxShadow: cardShadow,
                 p: 3,
                 mb: 3,
                 transition: 'box-shadow 0.2s, transform 0.2s',
+                border: cardBorder,
                 '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.15)', transform: 'translateY(-2px) scale(1.01)' }
               }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ color: colors.primary, fontWeight: 600, mr: 1 }}>
+                    <Typography variant="body2" sx={{ color: textPrimary, fontWeight: 600, mr: 1 }}>
                       {window.location.origin}{cluster.publicEndpoint}
                     </Typography>
                     <IconButton size="small" onClick={() => navigator.clipboard.writeText(window.location.origin + cluster.publicEndpoint)}>
@@ -394,13 +417,13 @@ const ClusterManagement = () => {
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  <Typography variant="body2" sx={{ color: '#333', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: textPrimary, mb: 1 }}>
                     <b>Algorithm:</b> {cluster.algorithm}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#333', mb: 1 }}>
-                    <b>Health Check:</b> <span style={{ color: colors.primary }}>{cluster.healthCheckEndpoint}</span> (every {cluster.healthCheckFrequency} seconds)
+                  <Typography variant="body2" sx={{ color: textPrimary, mb: 1 }}>
+                    <b>Health Check:</b> <span style={{ color: textSecondary }}>{cluster.healthCheckEndpoint}</span> (every {cluster.healthCheckFrequency} seconds)
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#333', mb: 2 }}>
+                  <Typography variant="body2" sx={{ color: textPrimary, mb: 2 }}>
                     <b>Nodes:</b> {cluster.nodes.length}
                   </Typography>
                   <List dense sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
@@ -410,27 +433,27 @@ const ClusterManagement = () => {
                           {node.url[0].toUpperCase()}
                         </Avatar>
                         <ListItemText
-                          primary={<span style={{ color: '#333' }}>{node.url}</span>}
+                          primary={<span style={{ color: textPrimary }}>{node.url}</span>}
                           secondary={
                             <>
-                              <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: colors.paleDogwood }} />
-                              <Typography variant="body2" sx={{ color: colors.paleDogwood, fontSize: 13 }}>Last checked: {new Date(node.lastChecked).toLocaleString()}</Typography>
+                              <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: textTertiary }} />
+                              <Typography variant="body2" sx={{ color: textTertiary, fontSize: 13 }}>Last checked: {new Date(node.lastChecked).toLocaleString()}</Typography>
                             </>
                           }
                         />
                         <Chip
                           label={node.healthStatus}
-                          color={node.healthStatus === 'healthy' ? 'success' : 'error'}
+                          sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
                           size="small"
-                          sx={{ mr: 1 }}
+                          style={{ textTransform: 'capitalize' }}
                         />
                         <Tooltip title="Check Health">
-                          <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={{ mr: 1, minWidth: 40, minHeight: 40, borderRadius: 8, transition: '0.2s', '&:active': { transform: 'scale(0.96)' } }}>
+                          <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
                             <RefreshIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Remove Node">
-                          <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} color="error" sx={{ minWidth: 40, minHeight: 40, borderRadius: 8, transition: '0.2s', '&:active': { transform: 'scale(0.96)' } }}>
+                          <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
                             <DeleteIcon />
                           </IconButton>
                         </Tooltip>
@@ -445,16 +468,7 @@ const ClusterManagement = () => {
                           setSelectedCluster(cluster.id);
                           setOpenNodeDialog(true);
                         }}
-                        sx={{
-                          backgroundColor: colors.primary,
-                          color: '#333',
-                          fontWeight: 600,
-                          boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
-                          '&:hover': {
-                            backgroundColor: colors.timberwolf,
-                            color: colors.primary,
-                          },
-                        }}
+                        sx={primaryButton}
                       >
                         Add Node
                       </Button>
@@ -484,12 +498,12 @@ const ClusterManagement = () => {
                       />
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <Tooltip title="Save">
-                          <IconButton onClick={() => handleSaveCluster(cluster.id)} color="primary">
+                          <IconButton onClick={() => handleSaveCluster(cluster.id)} sx={refreshIcon}>
                             <SaveIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Cancel">
-                          <IconButton onClick={handleCancelEdit} color="error">
+                          <IconButton onClick={handleCancelEdit} sx={deleteIcon}>
                             <CancelIcon />
                           </IconButton>
                         </Tooltip>
@@ -498,7 +512,7 @@ const ClusterManagement = () => {
                   ) : (
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                       <Tooltip title="Edit Cluster">
-                        <IconButton onClick={() => handleEditCluster(cluster)} color="primary">
+                        <IconButton onClick={() => handleEditCluster(cluster)} sx={refreshIcon}>
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
@@ -518,7 +532,7 @@ const ClusterManagement = () => {
         maxWidth={false}
       >
         <DialogTitle sx={{
-          color: colors.primary,
+          color: textPrimary,
           textAlign: 'center',
           fontWeight: 600,
           fontSize: '1.25rem',
@@ -543,7 +557,8 @@ const ClusterManagement = () => {
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
-          sx: { mb: 2.5 }
+          sx: { mb: 2.5 },
+          background: cardBackground
         }}>
           <form onSubmit={handleCreateCluster} style={{ width: '100%' }}>
             <TextField
@@ -607,10 +622,10 @@ const ClusterManagement = () => {
           <CircularProgress />
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
-          <Button onClick={() => setOpenClusterDialog(false)} color="secondary">
+          <Button onClick={() => setOpenClusterDialog(false)} sx={secondaryButton}>
             Cancel
           </Button>
-          <Button onClick={handleCreateCluster} variant="contained" color="primary">
+          <Button onClick={handleCreateCluster} variant="contained" sx={primaryButton}>
             Create Cluster
           </Button>
         </DialogActions>
@@ -624,25 +639,25 @@ const ClusterManagement = () => {
         fullWidth
       >
         <DialogTitle sx={{ 
-          backgroundColor: colors.linen,
-          color: colors.primary,
-          borderBottom: `1px solid ${colors.timberwolf}`,
+          backgroundColor: cardBackground,
+          color: textPrimary,
+          borderBottom: cardBorder,
           padding: '16px 24px'
         }}>
           Add New Node
         </DialogTitle>
         <DialogContent sx={{ 
-          backgroundColor: colors.linen,
+          backgroundColor: cardBackground,
           padding: 3,
           '& .MuiTextField-root': {
             marginBottom: 2,
             '& .MuiOutlinedInput-root': {
-              color: colors.primary,
+              color: textPrimary,
               '& fieldset': {
-                borderColor: colors.timberwolf,
+                borderColor: cardBorder,
               },
               '&:hover fieldset': {
-                borderColor: colors.primary,
+                borderColor: textPrimary,
               },
               '& input': {
                 overflow: 'hidden',
@@ -650,10 +665,10 @@ const ClusterManagement = () => {
               }
             },
             '& .MuiInputLabel-root': {
-              color: colors.timberwolf,
+              color: textSecondary,
             },
             '& .MuiFormHelperText-root': {
-              color: colors.timberwolf,
+              color: textSecondary,
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }
@@ -674,34 +689,20 @@ const ClusterManagement = () => {
           />
         </DialogContent>
         <DialogActions sx={{ 
-          backgroundColor: colors.linen,
+          backgroundColor: cardBackground,
           padding: 2,
-          borderTop: `1px solid ${colors.timberwolf}`
+          borderTop: cardBorder
         }}>
           <Button 
             onClick={() => setOpenNodeDialog(false)}
-            sx={{ 
-              color: colors.timberwolf,
-              '&:hover': {
-                backgroundColor: colors.champagnePink,
-              },
-            }}
+            sx={secondaryButton}
           >
             Cancel
           </Button>
           <Button 
             onClick={() => handleAddNode(selectedCluster as string)} 
             variant="contained"
-            sx={{
-              backgroundColor: colors.primary,
-              color: '#333',
-              fontWeight: 600,
-              boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
-              '&:hover': {
-                backgroundColor: colors.timberwolf,
-                color: colors.primary,
-              },
-            }}
+            sx={primaryButton}
           >
             Add
           </Button>
