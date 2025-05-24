@@ -85,6 +85,8 @@ const ClusterManagement = () => {
   const [editHealthCheckEndpoint, setEditHealthCheckEndpoint] = useState('');
   const [editHealthCheckFrequency, setEditHealthCheckFrequency] = useState(0);
   const [success, setSuccess] = useState<string>('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isAddingNode, setIsAddingNode] = useState(false);
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -105,6 +107,8 @@ const ClusterManagement = () => {
 
   const handleCreateCluster = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsCreating(true);
+    setError('');
     try {
       await clusterService.createCluster(newCluster);
       setNewCluster({
@@ -113,21 +117,31 @@ const ClusterManagement = () => {
         healthCheckEndpoint: '',
         healthCheckFrequency: 30
       });
-      fetchClusters();
+      await fetchClusters();
       setOpenClusterDialog(false);
+      setSuccess('Cluster created successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to create cluster');
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleAddNode = async (clusterId: string) => {
+    setIsAddingNode(true);
+    setError('');
     try {
       await clusterService.addNode(clusterId, newNodeUrl);
       setNewNodeUrl('');
-      fetchClusters();
+      await fetchClusters();
       setOpenNodeDialog(false);
+      setSuccess('Node added successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to add node');
+    } finally {
+      setIsAddingNode(false);
     }
   };
 
@@ -325,11 +339,17 @@ const ClusterManagement = () => {
             </form>
           </DialogContent>
           <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
-            <Button onClick={() => setOpenClusterDialog(false)} color="secondary">
+            <Button onClick={() => setOpenClusterDialog(false)} color="secondary" disabled={isCreating}>
               Cancel
             </Button>
-            <Button onClick={handleCreateCluster} variant="contained" color="primary">
-              Create Cluster
+            <Button 
+              onClick={handleCreateCluster} 
+              variant="contained" 
+              color="primary"
+              disabled={isCreating}
+              startIcon={isCreating ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              {isCreating ? 'Creating...' : 'Create Cluster'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -373,19 +393,23 @@ const ClusterManagement = () => {
           const clusterStatusIcon = clusterHealth === 'healthy' ? <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18, mr: 1 }} /> : clusterHealth === 'warning' ? <WarningIcon sx={{ color: '#ffb300', fontSize: 18, mr: 1 }} /> : <ErrorIcon sx={{ color: '#f44336', fontSize: 18, mr: 1 }} />;
 
           return (
-            <Grid item xs={12} sm={6} md={4} key={cluster.id}>
+            <Grid item xs={12} sm={12} md={12} key={cluster.id}>
               <Card elevation={4} sx={{
                 background: cardBackground,
                 color: textPrimary,
                 borderRadius: cardRadius,
                 boxShadow: cardShadow,
-                p: 3,
+                p: 4,
                 mb: 3,
                 transition: 'box-shadow 0.2s, transform 0.2s',
                 border: cardBorder,
-                '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.15)', transform: 'translateY(-2px) scale(1.01)' }
+                '&:hover': { boxShadow: '0 8px 24px rgba(0,0,0,0.15)', transform: 'translateY(-2px) scale(1.01)' },
+                minWidth: '100%',
+                maxWidth: '100%',
+                width: '100%',
+                mx: 'auto',
               }}>
-                <CardContent>
+                <CardContent sx={{ p: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <Typography variant="body2" sx={{ color: textPrimary, fontWeight: 600, mr: 1 }}>
                       {window.location.origin}{cluster.publicEndpoint}
@@ -426,40 +450,50 @@ const ClusterManagement = () => {
                   <Typography variant="body2" sx={{ color: textPrimary, mb: 2 }}>
                     <b>Nodes:</b> {cluster.nodes.length}
                   </Typography>
-                  <List dense sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                    {cluster.nodes.map((node) => (
-                      <ListItem key={node.id} sx={{ mb: 2, borderRadius: 2, background: colors.timberwolf, transition: 'box-shadow 0.2s, transform 0.2s', '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.10)', transform: 'scale(1.01)' } }}>
-                        <Avatar sx={{ bgcolor: node.healthStatus === 'healthy' ? colors.timberwolf : colors.champagnePink, mr: 2 }}>
-                          {node.url[0].toUpperCase()}
-                        </Avatar>
-                        <ListItemText
-                          primary={<span style={{ color: textPrimary }}>{node.url}</span>}
-                          secondary={
-                            <>
-                              <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: textTertiary }} />
-                              <Typography variant="body2" sx={{ color: textTertiary, fontSize: 13 }}>Last checked: {new Date(node.lastChecked).toLocaleString()}</Typography>
-                            </>
-                          }
-                        />
-                        <Chip
-                          label={node.healthStatus}
-                          sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
-                          size="small"
-                          style={{ textTransform: 'capitalize' }}
-                        />
-                        <Tooltip title="Check Health">
-                          <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
-                            <RefreshIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Remove Node">
-                          <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </ListItem>
-                    ))}
-                  </List>
+                  {/* Node List as Table */}
+                  <Box sx={{ overflowX: 'auto', mb: 2 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: colors.timberwolf }}>
+                          <th style={{ padding: 8, textAlign: 'left' }}>URL</th>
+                          <th style={{ padding: 8, textAlign: 'left' }}>Last Checked</th>
+                          <th style={{ padding: 8, textAlign: 'left' }}>Health</th>
+                          <th style={{ padding: 8, textAlign: 'left' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cluster.nodes.map((node) => (
+                          <tr key={node.id} style={{ background: '#fff', borderBottom: `1px solid ${colors.timberwolf}` }}>
+                            <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.url}</td>
+                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
+                              <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: textTertiary, verticalAlign: 'middle' }} />
+                              <span style={{ color: textTertiary, fontSize: 13 }}>{new Date(node.lastChecked).toLocaleString()}</span>
+                            </td>
+                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
+                              <Chip
+                                label={node.healthStatus}
+                                sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
+                                size="small"
+                                style={{ textTransform: 'capitalize' }}
+                              />
+                            </td>
+                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
+                              <Tooltip title="Check Health">
+                                <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
+                                  <RefreshIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Remove Node">
+                                <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                     <Tooltip title="Add Node">
                       <Button
@@ -619,14 +653,19 @@ const ClusterManagement = () => {
               {success}
             </Typography>
           )}
-          <CircularProgress />
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
-          <Button onClick={() => setOpenClusterDialog(false)} sx={secondaryButton}>
+          <Button onClick={() => setOpenClusterDialog(false)} sx={secondaryButton} disabled={isCreating}>
             Cancel
           </Button>
-          <Button onClick={handleCreateCluster} variant="contained" sx={primaryButton}>
-            Create Cluster
+          <Button 
+            onClick={handleCreateCluster} 
+            variant="contained" 
+            sx={primaryButton}
+            disabled={isCreating}
+            startIcon={isCreating ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {isCreating ? 'Creating...' : 'Create Cluster'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -634,7 +673,7 @@ const ClusterManagement = () => {
       {/* Add Node Dialog */}
       <Dialog 
         open={openNodeDialog} 
-        onClose={() => setOpenNodeDialog(false)}
+        onClose={() => !isAddingNode && setOpenNodeDialog(false)}
         maxWidth="sm"
         fullWidth
       >
@@ -686,7 +725,13 @@ const ClusterManagement = () => {
             inputProps={{
               maxLength: 200
             }}
+            disabled={isAddingNode}
           />
+          {error && (
+            <Typography color="error" sx={{ mt: 2 }}>
+              {error}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions sx={{ 
           backgroundColor: cardBackground,
@@ -696,6 +741,7 @@ const ClusterManagement = () => {
           <Button 
             onClick={() => setOpenNodeDialog(false)}
             sx={secondaryButton}
+            disabled={isAddingNode}
           >
             Cancel
           </Button>
@@ -703,8 +749,10 @@ const ClusterManagement = () => {
             onClick={() => handleAddNode(selectedCluster as string)} 
             variant="contained"
             sx={primaryButton}
+            disabled={isAddingNode}
+            startIcon={isAddingNode ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            Add
+            {isAddingNode ? 'Adding...' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>
