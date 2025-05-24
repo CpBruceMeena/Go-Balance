@@ -20,7 +20,8 @@ import {
   Chip,
   Avatar,
   Tooltip,
-  MenuItem
+  MenuItem,
+  Paper
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -152,7 +153,8 @@ const ClusterManagement = () => {
   };
 
   const handleHealthCheckFrequencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewCluster({ ...newCluster, healthCheckFrequency: Number.parseInt(e.target.value, 10) });
+    const value = Math.max(1, Number.parseInt(e.target.value, 10));
+    setNewCluster({ ...newCluster, healthCheckFrequency: value });
   };
 
   const handleEditCluster = (cluster: Cluster) => {
@@ -172,6 +174,8 @@ const ClusterManagement = () => {
       ));
       setEditingCluster(null);
       setSuccess('Cluster updated successfully!');
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to update cluster');
     }
@@ -205,6 +209,12 @@ const ClusterManagement = () => {
       {error && (
         <Typography color="error" sx={{ mb: 2 }}>
           {error}
+        </Typography>
+      )}
+
+      {success && (
+        <Typography color="success" sx={{ mb: 2 }}>
+          {success}
         </Typography>
       )}
 
@@ -294,11 +304,16 @@ const ClusterManagement = () => {
                       sx={{ mb: 1 }}
                     />
                     <TextField
+                      margin="dense"
                       label="Health Check Frequency (seconds)"
                       fullWidth
                       type="number"
                       value={editHealthCheckFrequency}
-                      onChange={(e) => setEditHealthCheckFrequency(Number.parseInt(e.target.value, 10))}
+                      onChange={(e) => {
+                        const value = Math.max(1, Number.parseInt(e.target.value, 10));
+                        setEditHealthCheckFrequency(value);
+                      }}
+                      inputProps={{ min: 1 }}
                       sx={{ mb: 1 }}
                     />
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -333,12 +348,95 @@ const ClusterManagement = () => {
       <Dialog 
         open={openClusterDialog} 
         onClose={() => setOpenClusterDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{
+          color: colors.caribbeanCurrent,
+          textAlign: 'center',
+          fontWeight: 600,
+          fontSize: '1.25rem',
+          pb: 0
+        }}>
+          Create New Cluster
+        </DialogTitle>
+        <DialogContent sx={{
+          pt: 1,
+          pb: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2
+        }}>
+          <form onSubmit={handleCreateCluster} style={{ width: '100%' }}>
+            <TextField
+              autoFocus
+              margin="normal"
+              label="Cluster Name"
+              fullWidth
+              value={newCluster.name}
+              onChange={(e) => setNewCluster({ ...newCluster, name: e.target.value })}
+              required
+              inputProps={{ maxLength: 50 }}
+              helperText="Enter a name for your cluster (max 50 characters)"
+            />
+            <TextField
+              margin="normal"
+              label="Health Check Endpoint"
+              fullWidth
+              value={newCluster.healthCheckEndpoint}
+              onChange={(e) => setNewCluster({ ...newCluster, healthCheckEndpoint: e.target.value })}
+              placeholder="/health"
+              helperText="Enter the health check endpoint path (e.g., /health)"
+              required
+              inputProps={{ maxLength: 100 }}
+            />
+            <TextField
+              margin="normal"
+              label="Health Check Frequency (seconds)"
+              fullWidth
+              type="number"
+              value={newCluster.healthCheckFrequency}
+              onChange={handleHealthCheckFrequencyChange}
+              inputProps={{ min: 1, max: 300 }}
+              required
+              helperText="Enter frequency between 1 and 300 seconds"
+            />
+            <TextField
+              select
+              margin="normal"
+              label="Load Balancing Algorithm"
+              fullWidth
+              value={newCluster.algorithm}
+              onChange={(e) => setNewCluster({ ...newCluster, algorithm: e.target.value })}
+              required
+              helperText="Select the load balancing algorithm"
+            >
+              <MenuItem value="round-robin">Round Robin</MenuItem>
+              <MenuItem value="least-connections">Least Connections</MenuItem>
+              <MenuItem value="weighted-round-robin">Weighted Round Robin</MenuItem>
+            </TextField>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button onClick={() => setOpenClusterDialog(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleCreateCluster} variant="contained" color="primary">
+            Create Cluster
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Node Dialog */}
+      <Dialog 
+        open={openNodeDialog} 
+        onClose={() => setOpenNodeDialog(false)}
         maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
             backgroundColor: colors.prussianBlue,
-            minWidth: '500px',
+            minWidth: { xs: '90%', sm: '500px' },
             maxWidth: '90vw'
           }
         }}
@@ -349,118 +447,49 @@ const ClusterManagement = () => {
           borderBottom: `1px solid ${colors.midnightGreen}`,
           padding: '16px 24px'
         }}>
-          Create New Cluster
+          Add New Node
         </DialogTitle>
         <DialogContent sx={{ 
           backgroundColor: colors.prussianBlue,
           padding: 3,
           '& .MuiTextField-root': {
-            marginBottom: 2
+            marginBottom: 2,
+            '& .MuiOutlinedInput-root': {
+              color: colors.caribbeanCurrent,
+              '& fieldset': {
+                borderColor: colors.midnightGreen,
+              },
+              '&:hover fieldset': {
+                borderColor: colors.caribbeanCurrent,
+              },
+              '& input': {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }
+            },
+            '& .MuiInputLabel-root': {
+              color: colors.midnightGreen,
+            },
+            '& .MuiFormHelperText-root': {
+              color: colors.midnightGreen,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }
           }
         }}>
-          <form onSubmit={handleCreateCluster}>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Cluster Name"
-              fullWidth
-              value={newCluster.name}
-              onChange={(e) => setNewCluster({ ...newCluster, name: e.target.value })}
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: colors.caribbeanCurrent,
-                  '& fieldset': {
-                    borderColor: colors.midnightGreen,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: colors.caribbeanCurrent,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: colors.midnightGreen,
-                },
-              }}
-            />
-            <TextField
-              margin="dense"
-              label="Health Check Endpoint"
-              fullWidth
-              value={newCluster.healthCheckEndpoint}
-              onChange={(e) => setNewCluster({ ...newCluster, healthCheckEndpoint: e.target.value })}
-              placeholder="/health"
-              helperText="Enter the health check endpoint path (e.g., /health)"
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: colors.caribbeanCurrent,
-                  '& fieldset': {
-                    borderColor: colors.midnightGreen,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: colors.caribbeanCurrent,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: colors.midnightGreen,
-                },
-                '& .MuiFormHelperText-root': {
-                  color: colors.midnightGreen,
-                },
-              }}
-            />
-            <TextField
-              margin="dense"
-              label="Health Check Frequency (seconds)"
-              fullWidth
-              type="number"
-              value={newCluster.healthCheckFrequency}
-              onChange={handleHealthCheckFrequencyChange}
-              inputProps={{ min: 5, max: 300 }}
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: colors.caribbeanCurrent,
-                  '& fieldset': {
-                    borderColor: colors.midnightGreen,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: colors.caribbeanCurrent,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: colors.midnightGreen,
-                },
-              }}
-            />
-            <TextField
-              select
-              margin="dense"
-              label="Load Balancing Algorithm"
-              fullWidth
-              value={newCluster.algorithm}
-              onChange={(e) => setNewCluster({ ...newCluster, algorithm: e.target.value })}
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: colors.caribbeanCurrent,
-                  '& fieldset': {
-                    borderColor: colors.midnightGreen,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: colors.caribbeanCurrent,
-                  },
-                },
-                '& .MuiInputLabel-root': {
-                  color: colors.midnightGreen,
-                },
-              }}
-            >
-              <MenuItem value="round-robin">Round Robin</MenuItem>
-              <MenuItem value="least-connections">Least Connections</MenuItem>
-              <MenuItem value="weighted-round-robin">Weighted Round Robin</MenuItem>
-            </TextField>
-          </form>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Node URL"
+            fullWidth
+            value={newNodeUrl}
+            onChange={(e) => setNewNodeUrl(e.target.value)}
+            placeholder="http://example.com:8080"
+            helperText="Enter the node's base URL (e.g., http://example.com:8080)"
+            inputProps={{
+              maxLength: 200
+            }}
+          />
         </DialogContent>
         <DialogActions sx={{ 
           backgroundColor: colors.prussianBlue,
@@ -468,7 +497,7 @@ const ClusterManagement = () => {
           borderTop: `1px solid ${colors.midnightGreen}`
         }}>
           <Button 
-            onClick={() => setOpenClusterDialog(false)}
+            onClick={() => setOpenNodeDialog(false)}
             sx={{ 
               color: colors.midnightGreen,
               '&:hover': {
@@ -479,7 +508,7 @@ const ClusterManagement = () => {
             Cancel
           </Button>
           <Button 
-            onClick={handleCreateCluster}
+            onClick={() => handleAddNode(selectedCluster as string)} 
             variant="contained"
             sx={{
               backgroundColor: colors.caribbeanCurrent,
@@ -490,29 +519,6 @@ const ClusterManagement = () => {
               },
             }}
           >
-            Create Cluster
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add Node Dialog */}
-      <Dialog open={openNodeDialog} onClose={() => setOpenNodeDialog(false)}>
-        <DialogTitle>Add New Node</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Node URL"
-            fullWidth
-            value={newNodeUrl}
-            onChange={(e) => setNewNodeUrl(e.target.value)}
-            placeholder="http://example.com:8080"
-            helperText="Enter the node's base URL (e.g., http://example.com:8080)"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenNodeDialog(false)}>Cancel</Button>
-          <Button onClick={() => handleAddNode(selectedCluster as string)} variant="contained">
             Add
           </Button>
         </DialogActions>
