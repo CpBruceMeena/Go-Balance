@@ -2,6 +2,15 @@
 
 A modern, scalable load balancer built in Go with a React.js web interface. This project provides a powerful load balancing solution with features like multiple load balancing algorithms, rate limiting, health checks, and a user-friendly web interface for configuration and monitoring.
 
+## New Homepage Experience
+
+- Stunning hero section with gradient title, animated subtitle, and version badge
+- Modern call-to-action buttons: "Start Free Trial" and "Live Demo"
+- Trust indicators: 99.99% uptime, 10,000+ users, 1B+ requests served
+- Customer logos for social proof
+- Features section redesigned as a 3x2 grid with icons, cards, and hover effects
+- All styles modular and responsive
+
 ## Features
 
 - Multiple load balancing algorithms (Round Robin, Least Connections, Weighted Round Robin, IP Hash)
