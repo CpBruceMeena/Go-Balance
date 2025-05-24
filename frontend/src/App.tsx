@@ -4,6 +4,7 @@ import { AppBar, Toolbar, Typography, Container, Box } from '@mui/material';
 import { colors } from './theme/colors';
 import ClusterManagement from './components/ClusterManagement';
 import Home from './pages/Home';
+import ClusterRoutes from './routes/ClusterRoutes';
 
 const App: React.FC = () => {
   return (
@@ -28,8 +29,8 @@ const App: React.FC = () => {
         <Container maxWidth="lg" sx={{ mt: 4 }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/clusters" element={<ClusterManagement />} />
           </Routes>
+          <ClusterRoutes />
         </Container>
       </Box>
     </Router>

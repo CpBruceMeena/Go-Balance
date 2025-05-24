@@ -46,6 +46,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import LiveMonitoringPanel from './LiveMonitoringPanel';
+import { useNavigate } from 'react-router-dom';
 
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
@@ -105,6 +106,7 @@ const ClusterManagement = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
   const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Mock data for charts and new metrics
   const mockRequestDistribution = {
@@ -621,6 +623,7 @@ const ClusterManagement = () => {
                               style={{ background: rowBg, borderBottom: `1px solid ${colors.timberwolf}`, transition: 'background 0.2s', cursor: 'pointer' }}
                               onMouseEnter={handleMouseEnter}
                               onMouseLeave={(e) => handleMouseLeave(e, rowBg)}
+                              onClick={() => navigate(`/clusters/${cluster.id}/nodes/${node.id}`)}
                             >
                               <td style={{ textAlign: 'center' }}>
                                 <Checkbox checked={isSelected} onChange={() => handleSelectNode(node.id)} size="small" />
