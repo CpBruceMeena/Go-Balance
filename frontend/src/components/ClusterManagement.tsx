@@ -46,6 +46,7 @@ const ClusterManagement = () => {
   const [editingCluster, setEditingCluster] = useState<string | null>(null);
   const [editHealthCheckEndpoint, setEditHealthCheckEndpoint] = useState('');
   const [editHealthCheckFrequency, setEditHealthCheckFrequency] = useState(0);
+  const [success, setSuccess] = useState<string>('');
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -170,6 +171,7 @@ const ClusterManagement = () => {
         cluster.id === clusterId ? updatedCluster : cluster
       ));
       setEditingCluster(null);
+      setSuccess('Cluster updated successfully!');
     } catch (err) {
       setError('Failed to update cluster');
     }
@@ -333,17 +335,28 @@ const ClusterManagement = () => {
         onClose={() => setOpenClusterDialog(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: colors.prussianBlue,
+            minWidth: '500px',
+            maxWidth: '90vw'
+          }
+        }}
       >
         <DialogTitle sx={{ 
           backgroundColor: colors.prussianBlue,
           color: colors.caribbeanCurrent,
-          borderBottom: `1px solid ${colors.midnightGreen}`
+          borderBottom: `1px solid ${colors.midnightGreen}`,
+          padding: '16px 24px'
         }}>
           Create New Cluster
         </DialogTitle>
         <DialogContent sx={{ 
           backgroundColor: colors.prussianBlue,
-          padding: 3
+          padding: 3,
+          '& .MuiTextField-root': {
+            marginBottom: 2
+          }
         }}>
           <form onSubmit={handleCreateCluster}>
             <TextField
@@ -355,7 +368,6 @@ const ClusterManagement = () => {
               onChange={(e) => setNewCluster({ ...newCluster, name: e.target.value })}
               required
               sx={{
-                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   color: colors.caribbeanCurrent,
                   '& fieldset': {
@@ -380,7 +392,6 @@ const ClusterManagement = () => {
               helperText="Enter the health check endpoint path (e.g., /health)"
               required
               sx={{
-                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   color: colors.caribbeanCurrent,
                   '& fieldset': {
@@ -408,7 +419,6 @@ const ClusterManagement = () => {
               inputProps={{ min: 5, max: 300 }}
               required
               sx={{
-                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   color: colors.caribbeanCurrent,
                   '& fieldset': {
@@ -432,7 +442,6 @@ const ClusterManagement = () => {
               onChange={(e) => setNewCluster({ ...newCluster, algorithm: e.target.value })}
               required
               sx={{
-                mb: 2,
                 '& .MuiOutlinedInput-root': {
                   color: colors.caribbeanCurrent,
                   '& fieldset': {

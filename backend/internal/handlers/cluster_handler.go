@@ -50,6 +50,11 @@ type CreateClusterRequest struct {
 	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
 }
 
+type UpdateClusterRequest struct {
+	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
+	HealthCheckFrequency int    `json:"healthCheckFrequency"`
+}
+
 func (cm *ClusterManager) GetClusters(w http.ResponseWriter, r *http.Request) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
@@ -295,10 +300,45 @@ func (cm *ClusterManager) UpdateAlgorithm(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(cluster)
 }
 
+func (cm *ClusterManager) UpdateCluster(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+
+	var request UpdateClusterRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cluster, exists := cm.clusters[clusterID]
+	if !exists {
+		http.Error(w, "Cluster not found", http.StatusNotFound)
+		return
+	}
+
+	// Update cluster configuration
+	cluster.HealthCheckEndpoint = request.HealthCheckEndpoint
+	cluster.HealthCheckFrequency = request.HealthCheckFrequency
+
+	// Restart health checks for all nodes with new configuration
+	for _, node := range cluster.Nodes {
+		go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
+	}
+
+	cm.clusters[clusterID] = cluster
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cluster)
+}
+
 func RegisterClusterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/clusters", clusterManager.GetClusters).Methods("GET")
 	router.HandleFunc("/api/clusters", clusterManager.CreateCluster).Methods("POST")
 	router.HandleFunc("/api/clusters/{clusterId}", clusterManager.DeleteCluster).Methods("DELETE")
+	router.HandleFunc("/api/clusters/{clusterId}", clusterManager.UpdateCluster).Methods("PUT")
 	router.HandleFunc("/api/clusters/{clusterId}/nodes", clusterManager.AddNode).Methods("POST")
 	router.HandleFunc("/api/clusters/{clusterId}/nodes/{nodeId}", clusterManager.DeleteNode).Methods("DELETE")
 	router.HandleFunc("/api/clusters/{clusterId}/nodes/{nodeId}/health", clusterManager.CheckNodeHealth).Methods("GET")
