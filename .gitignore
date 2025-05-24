@@ -8,6 +8,7 @@
 *.out
 go.work
 /vendor/
+go-balance
 
 # Go build output
 /bin/
@@ -53,4 +54,6 @@ yarn-error.log*
 # Cache
 .cache/
 .eslintcache
-.tsbuildinfo 
+.tsbuildinfo
+**/.cache/
+**/node_modules/.cache/ 
