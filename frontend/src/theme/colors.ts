@@ -1,13 +1,14 @@
 export const colors = {
-  onyx: 'var(--onyx)',
-  raisinBlack: 'var(--raisin-black)',
-  gunmetal: 'var(--gunmetal)',
-  richBlack: 'var(--rich-black)',
+  isabelline: 'var(--isabelline)',
+  timberwolf: 'var(--timberwolf)',
+  linen: 'var(--linen)',
+  champagnePink: 'var(--champagne-pink)',
+  paleDogwood: 'var(--pale-dogwood)',
   background: 'var(--gradient-radial)',
-  card: 'var(--gunmetal)',
-  text: 'var(--onyx)',
-  primary: 'var(--onyx)',
-  secondary: 'var(--raisin-black)',
+  card: 'var(--linen)',
+  text: 'var(--champagne-pink)',
+  primary: 'var(--champagne-pink)',
+  secondary: 'var(--timberwolf)',
 };
 
 export const gradients = {

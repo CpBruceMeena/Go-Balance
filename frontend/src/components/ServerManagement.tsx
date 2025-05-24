@@ -54,8 +54,8 @@ const ServerManagement = () => {
       
       {error && (
         <div className="border px-4 py-3 rounded mb-4" style={{ 
-          backgroundColor: colors.onyx,
-          borderColor: colors.onyx,
+          backgroundColor: colors.linen,
+          borderColor: colors.linen,
           color: colors.primary
         }}>
           {error}
@@ -71,9 +71,9 @@ const ServerManagement = () => {
             placeholder="Server URL"
             className="flex-1 p-2 rounded"
             style={{ 
-              backgroundColor: colors.gunmetal,
+              backgroundColor: colors.linen,
               color: colors.primary,
-              border: `1px solid ${colors.raisinBlack}`
+              border: `1px solid ${colors.timberwolf}`
             }}
             required
           />
@@ -84,9 +84,9 @@ const ServerManagement = () => {
             placeholder="Weight"
             className="w-24 p-2 rounded"
             style={{ 
-              backgroundColor: colors.gunmetal,
+              backgroundColor: colors.linen,
               color: colors.primary,
-              border: `1px solid ${colors.raisinBlack}`
+              border: `1px solid ${colors.timberwolf}`
             }}
             min="1"
             required
@@ -95,9 +95,9 @@ const ServerManagement = () => {
             type="submit"
             className="px-4 py-2 rounded"
             style={{ 
-              backgroundColor: colors.raisinBlack,
+              backgroundColor: colors.timberwolf,
               color: colors.primary,
-              border: `1px solid ${colors.raisinBlack}`
+              border: `1px solid ${colors.timberwolf}`
             }}
           >
             Add Server
@@ -111,25 +111,25 @@ const ServerManagement = () => {
             key={id}
             className="rounded p-4 flex justify-between items-center"
             style={{ 
-              backgroundColor: colors.gunmetal,
-              border: `1px solid ${colors.raisinBlack}`
+              backgroundColor: colors.linen,
+              border: `1px solid ${colors.timberwolf}`
             }}
           >
             <div>
               <h3 className="font-bold" style={{ color: colors.primary }}>
                 {server.url}
               </h3>
-              <p className="text-sm" style={{ color: colors.raisinBlack }}>
+              <p className="text-sm" style={{ color: colors.timberwolf }}>
                 Weight: {server.weight} | Status:{' '}
                 <span
                   style={{
-                    color: server.isActive ? colors.primary : colors.onyx
+                    color: server.isActive ? colors.primary : colors.champagnePink
                   }}
                 >
                   {server.isActive ? 'Active' : 'Inactive'}
                 </span>
               </p>
-              <div className="text-sm mt-2" style={{ color: colors.raisinBlack }}>
+              <div className="text-sm mt-2" style={{ color: colors.timberwolf }}>
                 <p>Total Requests: {server.stats.totalRequests}</p>
                 <p>Active Requests: {server.stats.activeRequests}</p>
                 <p>Failed Requests: {server.stats.failedRequests}</p>
@@ -143,9 +143,9 @@ const ServerManagement = () => {
               onClick={() => handleRemoveServer(id)}
               className="px-3 py-1 rounded"
               style={{ 
-                backgroundColor: colors.onyx,
+                backgroundColor: colors.champagnePink,
                 color: colors.primary,
-                border: `1px solid ${colors.onyx}`
+                border: `1px solid ${colors.champagnePink}`
               }}
             >
               Remove
