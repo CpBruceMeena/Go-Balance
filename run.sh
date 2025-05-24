@@ -32,39 +32,70 @@ print_url() {
     echo -e "${BOLD}${BLUE}=================================================${NC}\n"
 }
 
+install_on_linux() {
+    if command -v apt-get &> /dev/null; then
+        if command -v sudo &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y "$@"
+        else
+            apt-get update
+            apt-get install -y "$@"
+        fi
+    elif command -v yum &> /dev/null; then
+        if command -v sudo &> /dev/null; then
+            sudo yum install -y "$@"
+        else
+            yum install -y "$@"
+        fi
+    elif command -v pacman &> /dev/null; then
+        if command -v sudo &> /dev/null; then
+            sudo pacman -Sy --noconfirm "$@"
+        else
+            pacman -Sy --noconfirm "$@"
+        fi
+    else
+        print_error "No supported package manager found. Please install dependencies manually."
+        exit 1
+    fi
+}
+
+install_on_mac() {
+    if ! command -v brew &> /dev/null; then
+        print_error "Homebrew not found. Please install Homebrew: https://brew.sh/"
+        exit 1
+    fi
+    brew install "$@"
+}
+
+install_on_windows() {
+    if ! command -v choco &> /dev/null; then
+        print_error "Chocolatey not found. Please install Chocolatey: https://chocolatey.org/install"
+        exit 1
+    fi
+    choco install -y "$@"
+}
+
+check_and_install() {
+    local cmd=$1
+    local pkg=$2
+    if ! command -v $cmd &> /dev/null; then
+        print_warning "$cmd is not installed."
+        case "$OSTYPE" in
+            linux-gnu*) install_on_linux "$pkg" ;;
+            darwin*) install_on_mac "$pkg" ;;
+            msys*) install_on_windows "$pkg" ;;
+            *) print_error "Unsupported OS. Please install $pkg manually."; exit 1 ;;
+        esac
+    fi
+}
+
 # Check prerequisites
 check_prerequisites() {
     print_status "Checking prerequisites..."
 
-    # Check Go version
-    if ! command -v go &> /dev/null; then
-        print_error "Go is not installed. Please install Go 1.21 or higher."
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            echo "Installing Go..."
-            sudo apt update && sudo apt install -y golang
-        else
-            echo "Please install Go manually: https://golang.org/dl/"
-            exit 1
-        fi
-    fi
-
-    # Check Node.js version
-    if ! command -v node &> /dev/null; then
-        print_error "Node.js is not installed. Please install Node.js 18 or higher."
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            echo "Installing Node.js..."
-            sudo apt update && sudo apt install -y nodejs npm
-        else
-            echo "Please install Node.js manually: https://nodejs.org/"
-            exit 1
-        fi
-    fi
-
-    # Check npm version
-    if ! command -v npm &> /dev/null; then
-        print_error "npm is not installed. Please install npm 9 or higher."
-        exit 1
-    fi
+    check_and_install go golang
+    check_and_install node nodejs
+    check_and_install npm npm
 
     print_status "All prerequisites are satisfied."
 }
@@ -133,7 +164,7 @@ start_application() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         open http://localhost:8080
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        xdg-open http://localhost:8080
+        xdg-open http://localhost:8080 || true
     elif [[ "$OSTYPE" == "msys" ]]; then
         start http://localhost:8080
     fi
