@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -37,13 +39,25 @@ check_prerequisites() {
     # Check Go version
     if ! command -v go &> /dev/null; then
         print_error "Go is not installed. Please install Go 1.21 or higher."
-        exit 1
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            echo "Installing Go..."
+            sudo apt update && sudo apt install -y golang
+        else
+            echo "Please install Go manually: https://golang.org/dl/"
+            exit 1
+        fi
     fi
 
     # Check Node.js version
     if ! command -v node &> /dev/null; then
         print_error "Node.js is not installed. Please install Node.js 18 or higher."
-        exit 1
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            echo "Installing Node.js..."
+            sudo apt update && sudo apt install -y nodejs npm
+        else
+            echo "Please install Node.js manually: https://nodejs.org/"
+            exit 1
+        fi
     fi
 
     # Check npm version
