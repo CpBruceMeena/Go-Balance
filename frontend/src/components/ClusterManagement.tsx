@@ -33,8 +33,8 @@ const ClusterManagement = () => {
   const [openNodeDialog, setOpenNodeDialog] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [newClusterName, setNewClusterName] = useState('');
+  const [newClusterHealthCheckEndpoint, setNewClusterHealthCheckEndpoint] = useState('/health');
   const [newNodeUrl, setNewNodeUrl] = useState('');
-  const [newNodeHealthCheckUrl, setNewNodeHealthCheckUrl] = useState('/health');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,9 +59,13 @@ const ClusterManagement = () => {
   const handleCreateCluster = async () => {
     if (newClusterName.trim()) {
       try {
-        const newCluster = await clusterService.createCluster(newClusterName);
+        const newCluster = await clusterService.createCluster(
+          newClusterName,
+          newClusterHealthCheckEndpoint
+        );
         setClusters([...clusters, newCluster]);
         setNewClusterName('');
+        setNewClusterHealthCheckEndpoint('/health');
         setOpenClusterDialog(false);
         setError(null);
       } catch (err) {
@@ -74,14 +78,13 @@ const ClusterManagement = () => {
   const handleAddNode = async () => {
     if (selectedCluster && newNodeUrl.trim()) {
       try {
-        const newNode = await clusterService.addNode(selectedCluster, newNodeUrl, newNodeHealthCheckUrl);
+        const newNode = await clusterService.addNode(selectedCluster, newNodeUrl);
         setClusters(clusters.map(cluster => 
           cluster.id === selectedCluster
             ? { ...cluster, nodes: [...cluster.nodes, newNode] }
             : cluster
         ));
         setNewNodeUrl('');
-        setNewNodeHealthCheckUrl('/health');
         setOpenNodeDialog(false);
         setError(null);
       } catch (err) {
@@ -266,6 +269,15 @@ const ClusterManagement = () => {
             value={newClusterName}
             onChange={(e) => setNewClusterName(e.target.value)}
           />
+          <TextField
+            margin="dense"
+            label="Health Check Endpoint"
+            fullWidth
+            value={newClusterHealthCheckEndpoint}
+            onChange={(e) => setNewClusterHealthCheckEndpoint(e.target.value)}
+            placeholder="/health"
+            helperText="Enter the health check endpoint path (e.g., /health)"
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenClusterDialog(false)}>Cancel</Button>
@@ -287,16 +299,7 @@ const ClusterManagement = () => {
             value={newNodeUrl}
             onChange={(e) => setNewNodeUrl(e.target.value)}
             placeholder="http://example.com:8080"
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Health Check URL"
-            fullWidth
-            value={newNodeHealthCheckUrl}
-            onChange={(e) => setNewNodeHealthCheckUrl(e.target.value)}
-            placeholder="/health"
-            helperText="The endpoint to check node health (e.g., /health, /ping)"
+            helperText="Enter the node's base URL (e.g., http://example.com:8080)"
           />
         </DialogContent>
         <DialogActions>

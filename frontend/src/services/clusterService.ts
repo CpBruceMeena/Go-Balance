@@ -15,6 +15,7 @@ export interface Cluster {
   name: string;
   nodes: Node[];
   algorithm: 'round-robin' | 'least-connections' | 'weighted-round-robin';
+  healthCheckEndpoint: string;
 }
 
 export const clusterService = {
@@ -23,8 +24,11 @@ export const clusterService = {
     return response.data;
   },
 
-  async createCluster(name: string): Promise<Cluster> {
-    const response = await axios.post<Cluster>(`${API_BASE_URL}/clusters`, { name });
+  async createCluster(name: string, healthCheckEndpoint: string): Promise<Cluster> {
+    const response = await axios.post<Cluster>(`${API_BASE_URL}/clusters`, { 
+      name,
+      healthCheckEndpoint 
+    });
     return response.data;
   },
 
@@ -32,10 +36,9 @@ export const clusterService = {
     await axios.delete(`${API_BASE_URL}/clusters/${clusterId}`);
   },
 
-  async addNode(clusterId: string, url: string, healthCheckUrl: string): Promise<Node> {
+  async addNode(clusterId: string, url: string): Promise<Node> {
     const response = await axios.post<{ node: Node }>(`${API_BASE_URL}/clusters/${clusterId}/nodes`, {
       url,
-      healthCheckUrl,
     });
     return response.data.node;
   },
