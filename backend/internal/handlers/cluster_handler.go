@@ -436,13 +436,59 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	// Simple round-robin: pick the next active node
 	var nodeURL string
 	var nodeIdx int
-	for i, node := range targetCluster.Nodes {
-		if node.IsActive {
-			nodeURL = node.URL
-			nodeIdx = i
-			break
+
+	switch targetCluster.Algorithm {
+	case "round-robin":
+		// Find the next active node after the last used one
+		startIdx := 0
+		if len(targetCluster.Nodes) > 0 {
+			startIdx = (targetCluster.TotalRequests % len(targetCluster.Nodes))
+		}
+		for i := 0; i < len(targetCluster.Nodes); i++ {
+			idx := (startIdx + i) % len(targetCluster.Nodes)
+			if targetCluster.Nodes[idx].IsActive {
+				nodeURL = targetCluster.Nodes[idx].URL
+				nodeIdx = idx
+				break
+			}
+		}
+	case "least-connections":
+		// Find the node with the least active connections
+		minConnections := -1
+		for i, node := range targetCluster.Nodes {
+			if !node.IsActive {
+				continue
+			}
+			if minConnections == -1 || node.TotalRequests < minConnections {
+				minConnections = node.TotalRequests
+				nodeURL = node.URL
+				nodeIdx = i
+			}
+		}
+	case "weighted-round-robin":
+		// Find the node with the highest weight among active nodes
+		maxWeight := -1
+		for i, node := range targetCluster.Nodes {
+			if !node.IsActive {
+				continue
+			}
+			if node.Weight > maxWeight {
+				maxWeight = node.Weight
+				nodeURL = node.URL
+				nodeIdx = i
+			}
+		}
+	default:
+		// Default to round-robin
+		for i, node := range targetCluster.Nodes {
+			if node.IsActive {
+				nodeURL = node.URL
+				nodeIdx = i
+				break
+			}
 		}
 	}
+
 	if nodeURL == "" {
 		http.Error(w, "No active nodes available", http.StatusServiceUnavailable)
 		return
