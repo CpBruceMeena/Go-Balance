@@ -19,6 +19,7 @@ export interface Cluster {
   healthCheckFrequency: number;
   createdAt: string;
   updatedAt: string;
+  publicEndpoint: string;
 }
 
 export interface CreateClusterRequest {

@@ -29,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 const ClusterManagement = () => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
@@ -174,7 +175,7 @@ const ClusterManagement = () => {
   return (
     <Box sx={{ p: { xs: 1, sm: 3 } }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ color: colors.caribbeanCurrent }}>
+        <Typography variant="h4" component="h1" sx={{ color: colors.primary, fontWeight: 700 }}>
           Cluster Management
         </Typography>
         <Button
@@ -182,9 +183,12 @@ const ClusterManagement = () => {
           startIcon={<AddIcon />}
           onClick={() => setOpenClusterDialog(true)}
           sx={{
-            backgroundColor: colors.caribbeanCurrent,
+            backgroundColor: colors.primary,
+            color: '#333',
+            fontWeight: 600,
+            boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
             '&:hover': {
-              backgroundColor: colors.midnightGreen,
+              backgroundColor: colors.raisinBlack,
             },
           }}
         >
@@ -207,12 +211,20 @@ const ClusterManagement = () => {
       <Grid container spacing={3}>
         {clusters.map((cluster) => (
           <Grid item xs={12} sm={6} md={4} key={cluster.id}>
-            <Card elevation={4} sx={{ borderRadius: 3, background: colors.prussianBlue, border: `1px solid ${colors.midnightGreen}` }}>
+            <Card elevation={4} sx={{ borderRadius: 3, background: 'rgba(255,255,255,0.85)', border: `1px solid ${colors.raisinBlack}`, boxShadow: '0 4px 24px 0 rgba(0,0,0,0.10)' }}>
               <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: colors.primary, fontWeight: 600, mr: 1 }}>
+                    {window.location.origin}{cluster.publicEndpoint}
+                  </Typography>
+                  <IconButton size="small" onClick={() => navigator.clipboard.writeText(window.location.origin + cluster.publicEndpoint)}>
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <HealthAndSafetyIcon sx={{ color: colors.caribbeanCurrent, mr: 1 }} />
-                    <Typography variant="h6" sx={{ color: colors.caribbeanCurrent, fontWeight: 600 }}>{cluster.name}</Typography>
+                    <HealthAndSafetyIcon sx={{ color: colors.primary, mr: 1 }} />
+                    <Typography variant="h6" sx={{ color: '#333', fontWeight: 700 }}>{cluster.name}</Typography>
                   </Box>
                   <Tooltip title="Delete Cluster">
                     <IconButton onClick={() => handleDeleteCluster(cluster.id)} color="error">
@@ -220,24 +232,24 @@ const ClusterManagement = () => {
                     </IconButton>
                   </Tooltip>
                 </Box>
-                <Typography variant="body2" sx={{ color: colors.midnightGreen, mb: 1 }}>
+                <Typography variant="body2" sx={{ color: '#333', mb: 1 }}>
                   <b>Algorithm:</b> {cluster.algorithm}
                 </Typography>
-                <Typography variant="body2" sx={{ color: colors.midnightGreen, mb: 1 }}>
-                  <b>Health Check:</b> <span style={{ color: colors.caribbeanCurrent }}>{cluster.healthCheckEndpoint}</span> (every {cluster.healthCheckFrequency} seconds)
+                <Typography variant="body2" sx={{ color: '#333', mb: 1 }}>
+                  <b>Health Check:</b> <span style={{ color: colors.primary }}>{cluster.healthCheckEndpoint}</span> (every {cluster.healthCheckFrequency} seconds)
                 </Typography>
-                <Typography variant="body2" sx={{ color: colors.midnightGreen, mb: 2 }}>
+                <Typography variant="body2" sx={{ color: '#333', mb: 2 }}>
                   <b>Nodes:</b> {cluster.nodes.length}
                 </Typography>
                 <List dense>
                   {cluster.nodes.map((node) => (
-                    <ListItem key={node.id} sx={{ borderRadius: 2, mb: 1, background: colors.darkPurple2 }}>
-                      <Avatar sx={{ bgcolor: node.healthStatus === 'healthy' ? colors.midnightGreen : colors.palatinate, mr: 2 }}>
+                    <ListItem key={node.id} sx={{ borderRadius: 2, mb: 1, background: colors.onyx }}>
+                      <Avatar sx={{ bgcolor: node.healthStatus === 'healthy' ? colors.raisinBlack : colors.onyx, mr: 2 }}>
                         {node.url[0].toUpperCase()}
                       </Avatar>
                       <ListItemText
-                        primary={<span style={{ color: colors.caribbeanCurrent }}>{node.url}</span>}
-                        secondary={<span style={{ color: colors.midnightGreen }}>Last checked: {new Date(node.lastChecked).toLocaleString()}</span>}
+                        primary={<span style={{ color: '#333' }}>{node.url}</span>}
+                        secondary={<span style={{ color: '#333' }}>Last checked: {new Date(node.lastChecked).toLocaleString()}</span>}
                       />
                       <Chip
                         label={node.healthStatus}
@@ -267,12 +279,13 @@ const ClusterManagement = () => {
                         setOpenNodeDialog(true);
                       }}
                       sx={{
-                        backgroundColor: colors.caribbeanCurrent,
-                        color: colors.prussianBlue,
+                        backgroundColor: colors.primary,
+                        color: '#333',
                         fontWeight: 600,
+                        boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
                         '&:hover': {
-                          backgroundColor: colors.midnightGreen,
-                          color: colors.caribbeanCurrent,
+                          backgroundColor: colors.raisinBlack,
+                          color: colors.primary,
                         },
                       }}
                     >
@@ -338,7 +351,7 @@ const ClusterManagement = () => {
         fullWidth
       >
         <DialogTitle sx={{
-          color: colors.caribbeanCurrent,
+          color: colors.primary,
           textAlign: 'center',
           fontWeight: 600,
           fontSize: '1.25rem',
@@ -421,25 +434,25 @@ const ClusterManagement = () => {
         fullWidth
       >
         <DialogTitle sx={{ 
-          backgroundColor: colors.prussianBlue,
-          color: colors.caribbeanCurrent,
-          borderBottom: `1px solid ${colors.midnightGreen}`,
+          backgroundColor: colors.gunmetal,
+          color: colors.primary,
+          borderBottom: `1px solid ${colors.raisinBlack}`,
           padding: '16px 24px'
         }}>
           Add New Node
         </DialogTitle>
         <DialogContent sx={{ 
-          backgroundColor: colors.prussianBlue,
+          backgroundColor: colors.gunmetal,
           padding: 3,
           '& .MuiTextField-root': {
             marginBottom: 2,
             '& .MuiOutlinedInput-root': {
-              color: colors.caribbeanCurrent,
+              color: colors.primary,
               '& fieldset': {
-                borderColor: colors.midnightGreen,
+                borderColor: colors.raisinBlack,
               },
               '&:hover fieldset': {
-                borderColor: colors.caribbeanCurrent,
+                borderColor: colors.primary,
               },
               '& input': {
                 overflow: 'hidden',
@@ -447,10 +460,10 @@ const ClusterManagement = () => {
               }
             },
             '& .MuiInputLabel-root': {
-              color: colors.midnightGreen,
+              color: colors.raisinBlack,
             },
             '& .MuiFormHelperText-root': {
-              color: colors.midnightGreen,
+              color: colors.raisinBlack,
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }
@@ -471,16 +484,16 @@ const ClusterManagement = () => {
           />
         </DialogContent>
         <DialogActions sx={{ 
-          backgroundColor: colors.prussianBlue,
+          backgroundColor: colors.gunmetal,
           padding: 2,
-          borderTop: `1px solid ${colors.midnightGreen}`
+          borderTop: `1px solid ${colors.raisinBlack}`
         }}>
           <Button 
             onClick={() => setOpenNodeDialog(false)}
             sx={{ 
-              color: colors.midnightGreen,
+              color: colors.raisinBlack,
               '&:hover': {
-                backgroundColor: colors.darkPurple2,
+                backgroundColor: colors.onyx,
               },
             }}
           >
@@ -490,11 +503,13 @@ const ClusterManagement = () => {
             onClick={() => handleAddNode(selectedCluster as string)} 
             variant="contained"
             sx={{
-              backgroundColor: colors.caribbeanCurrent,
-              color: colors.prussianBlue,
+              backgroundColor: colors.primary,
+              color: '#333',
+              fontWeight: 600,
+              boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)',
               '&:hover': {
-                backgroundColor: colors.midnightGreen,
-                color: colors.caribbeanCurrent,
+                backgroundColor: colors.raisinBlack,
+                color: colors.primary,
               },
             }}
           >

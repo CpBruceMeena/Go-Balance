@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -32,6 +32,7 @@ type Cluster struct {
 	Algorithm            string `json:"algorithm"`
 	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
 	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
+	PublicEndpoint       string `json:"publicEndpoint"`
 }
 
 type ClusterManager struct {
@@ -74,6 +75,13 @@ func (cm *ClusterManager) GetClusters(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(clusters)
 }
 
+func slugify(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, "_", "-")
+	return name
+}
+
 func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) {
 	var request CreateClusterRequest
 
@@ -88,6 +96,9 @@ func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	clusterNameSlug := slugify(request.Name)
+	publicEndpoint := "/api/proxy/" + clusterNameSlug
+
 	cluster := &Cluster{
 		ID:                   time.Now().Format("20060102150405"),
 		Name:                 request.Name,
@@ -95,6 +106,7 @@ func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) 
 		Algorithm:            "round-robin",
 		HealthCheckEndpoint:  request.HealthCheckEndpoint,
 		HealthCheckFrequency: request.HealthCheckFrequency,
+		PublicEndpoint:       publicEndpoint,
 	}
 
 	cm.mu.Lock()
@@ -142,11 +154,8 @@ func (cm *ClusterManager) checkNodeHealth(nodeURL, healthCheckEndpoint string) (
 
 func (cm *ClusterManager) startNodeHealthCheck(clusterID, nodeID, nodeURL, healthCheckEndpoint string, frequency int) {
 	if frequency <= 0 {
-		log.Printf("[startNodeHealthCheck] Invalid frequency (%d) for node %s in cluster %s. Skipping health check goroutine.", frequency, nodeID, clusterID)
 		return
 	}
-	log.Printf("[startNodeHealthCheck] Starting health check for node %s in cluster %s with frequency %d seconds.", nodeID, clusterID, frequency)
-	// Create a stop channel for this health check
 	stopChan := make(chan struct{})
 	stopKey := fmt.Sprintf("%s-%s", clusterID, nodeID)
 
@@ -245,7 +254,6 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	healthStatus, err := cm.checkNodeHealth(node.URL, cluster.HealthCheckEndpoint)
 	if err != nil {
 		healthStatus = "unhealthy"
-		log.Printf("[AddNode] Immediate health check failed for node %s: %v", node.URL, err)
 	}
 	node.HealthStatus = healthStatus
 	node.IsActive = healthStatus == "healthy"
@@ -253,8 +261,6 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	cluster.Nodes = append(cluster.Nodes, *node)
 	cm.clusters[clusterID] = cluster
 	cm.mu.Unlock()
-
-	log.Printf("[AddNode] Added node %s to cluster %s. Starting health check goroutine.", node.ID, clusterID)
 
 	// Start periodic health check for this node
 	go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
@@ -413,6 +419,79 @@ func (cm *ClusterManager) UpdateCluster(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(cluster)
 }
 
+// Add a proxy handler
+func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterSlug := vars["clusterSlug"]
+	rest := vars["rest"]
+
+	cm.mu.RLock()
+	var targetCluster *Cluster
+	for _, cluster := range cm.clusters {
+		if slugify(cluster.Name) == clusterSlug {
+			targetCluster = cluster
+			break
+		}
+	}
+	cm.mu.RUnlock()
+
+	if targetCluster == nil {
+		http.Error(w, "Cluster not found", http.StatusNotFound)
+		return
+	}
+
+	if len(targetCluster.Nodes) == 0 {
+		http.Error(w, "No nodes available in cluster", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Simple round-robin: pick the next active node
+	var nodeURL string
+	for _, node := range targetCluster.Nodes {
+		if node.IsActive {
+			nodeURL = node.URL
+			break
+		}
+	}
+	if nodeURL == "" {
+		http.Error(w, "No active nodes available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Proxy the request to the selected node
+	forwardPath := "/" + rest
+	if rest == "" {
+		forwardPath = "/"
+	}
+	proxyURL := nodeURL + forwardPath
+	if r.URL.RawQuery != "" {
+		proxyURL += "?" + r.URL.RawQuery
+	}
+
+	proxyReq, err := http.NewRequest(r.Method, proxyURL, r.Body)
+	if err != nil {
+		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		return
+	}
+	proxyReq.Header = r.Header
+
+	client := &http.Client{}
+	resp, err := client.Do(proxyReq)
+	if err != nil {
+		http.Error(w, "Failed to reach node", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	for k, v := range resp.Header {
+		for _, vv := range v {
+			w.Header().Add(k, vv)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
+}
+
 func RegisterClusterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/clusters", clusterManager.GetClusters).Methods("GET")
 	router.HandleFunc("/api/clusters", clusterManager.CreateCluster).Methods("POST")
@@ -422,4 +501,6 @@ func RegisterClusterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/clusters/{clusterId}/nodes/{nodeId}", clusterManager.DeleteNode).Methods("DELETE")
 	router.HandleFunc("/api/clusters/{clusterId}/nodes/{nodeId}/health", clusterManager.CheckNodeHealth).Methods("GET")
 	router.HandleFunc("/api/clusters/{clusterId}/algorithm", clusterManager.UpdateAlgorithm).Methods("PUT")
+	// Add the proxy route
+	router.HandleFunc("/api/proxy/{clusterSlug}/{rest:.*}", clusterManager.ProxyToCluster)
 }
