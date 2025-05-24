@@ -569,6 +569,57 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	_, _ = io.Copy(w, resp.Body)
 }
 
+func (cm *ClusterManager) GetNodeMetrics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+
+	cm.mu.RLock()
+	cluster, exists := cm.clusters[clusterID]
+	cm.mu.RUnlock()
+	if !exists {
+		http.Error(w, "Cluster not found", http.StatusNotFound)
+		return
+	}
+
+	type NodeMetric struct {
+		ID          string  `json:"id"`
+		URL         string  `json:"url"`
+		Connections int     `json:"connections"`
+		ErrorRate   float64 `json:"errorRate"`
+		CPU         float64 `json:"cpu"`
+		Memory      float64 `json:"memory"`
+		Requests    int     `json:"requests"`
+		Success     int     `json:"success"`
+		Failure     int     `json:"failure"`
+	}
+
+	metrics := make([]NodeMetric, 0, len(cluster.Nodes))
+	for _, node := range cluster.Nodes {
+		// For demo, mock CPU/Memory, and count failures as 5% of total requests
+		total := node.TotalRequests
+		failures := int(float64(total) * 0.05)
+		success := total - failures
+		errorRate := 0.0
+		if total > 0 {
+			errorRate = float64(failures) / float64(total) * 100
+		}
+		metrics = append(metrics, NodeMetric{
+			ID:          node.ID,
+			URL:         node.URL,
+			Connections: node.Connections,
+			ErrorRate:   errorRate,
+			CPU:         30 + float64(len(node.ID))*2, // mock
+			Memory:      50 + float64(len(node.ID))*3, // mock
+			Requests:    total,
+			Success:     success,
+			Failure:     failures,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metrics)
+}
+
 func RegisterClusterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/clusters", clusterManager.GetClusters).Methods("GET")
 	router.HandleFunc("/api/clusters", clusterManager.CreateCluster).Methods("POST")
@@ -580,4 +631,5 @@ func RegisterClusterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/clusters/{clusterId}/algorithm", clusterManager.UpdateAlgorithm).Methods("PUT")
 	// Add the proxy route
 	router.HandleFunc("/api/proxy/{clusterSlug}/{rest:.*}", clusterManager.ProxyToCluster)
+	router.HandleFunc("/api/clusters/{clusterId}/nodes/metrics", clusterManager.GetNodeMetrics).Methods("GET")
 }

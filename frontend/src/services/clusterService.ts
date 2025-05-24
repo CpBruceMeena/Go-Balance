@@ -14,6 +14,8 @@ export interface Node {
   responseTime?: number;
   createdAt?: string;
   weight?: number;
+  connections?: number;
+  errorRate?: number;
 }
 
 export interface Cluster {
@@ -36,6 +38,18 @@ export interface CreateClusterRequest {
   algorithm: string;
   healthCheckEndpoint: string;
   healthCheckFrequency: number;
+}
+
+export interface NodeMetric {
+  id: string;
+  url: string;
+  connections: number;
+  errorRate: number;
+  cpu: number;
+  memory: number;
+  requests: number;
+  success: number;
+  failure: number;
 }
 
 export const clusterService = {
@@ -77,5 +91,11 @@ export const clusterService = {
   async updateCluster(clusterId: string, data: { healthCheckEndpoint: string; healthCheckFrequency: number }): Promise<Cluster> {
     const response = await axios.put<Cluster>(`${API_BASE_URL}/clusters/${clusterId}`, data);
     return response.data;
+  },
+
+  async getNodeMetrics(clusterId: string): Promise<NodeMetric[]> {
+    const response = await fetch(`/api/clusters/${clusterId}/nodes/metrics`);
+    if (!response.ok) throw new Error('Failed to fetch node metrics');
+    return response.json();
   }
 }; 

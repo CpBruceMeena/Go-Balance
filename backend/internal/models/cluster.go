@@ -16,6 +16,10 @@ type Node struct {
 	RequestsPerSec    float64     `json:"requestsPerSec"`
 	LastRequest       time.Time   `json:"lastRequest"`
 	RequestTimestamps []time.Time `json:"-"`
+	Connections       int         `json:"connections"`
+	ErrorRate         float64     `json:"errorRate"`
+	CPU               float64     `json:"cpu"`
+	Memory            float64     `json:"memory"`
 }
 
 type Cluster struct {

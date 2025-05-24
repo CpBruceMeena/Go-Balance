@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { clusterService, type Cluster, type CreateClusterRequest } from '../services/clusterService';
+import { clusterService, type Cluster, type CreateClusterRequest, type NodeMetric } from '../services/clusterService';
 import { colors } from '../theme/colors';
 import { 
   TextField, 
@@ -40,6 +40,14 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Checkbox from '@mui/material/Checkbox';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
+import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Pie, Bar, Line } from 'react-chartjs-2';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import LiveMonitoringPanel from './LiveMonitoringPanel';
+
+Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
 // 1. Main background
 const mainBackground = 'var(--linen)';
@@ -92,6 +100,34 @@ const ClusterManagement = () => {
   const [isAddingNode, setIsAddingNode] = useState(false);
   const [selectedNodes, setSelectedNodes] = useState<{[key: string]: boolean}>({});
   const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5000);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
+  const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
+
+  // Mock data for charts and new metrics
+  const mockRequestDistribution = {
+    labels: ['Node 1', 'Node 2', 'Node 3'],
+    datasets: [{
+      label: 'Requests',
+      data: [120, 90, 60],
+      backgroundColor: ['#48BB78', '#f6ad55', '#f56565'],
+    }],
+  };
+  const mockSuccessFailure = {
+    labels: ['Success', 'Failure'],
+    datasets: [{
+      label: 'Requests',
+      data: [260, 12],
+      backgroundColor: ['#48BB78', '#f56565'],
+    }],
+  };
+  const mockNodeMetrics = [
+    { id: '1', url: 'http://127.0.0.1:3001', requests: 120, success: 115, failure: 5, cpu: 32, memory: 60, connections: 10 },
+    { id: '2', url: 'http://127.0.0.1:3002', requests: 80, success: 75, failure: 5, cpu: 45, memory: 50, connections: 7 },
+    { id: '3', url: 'http://127.0.0.1:3000', requests: 100, success: 98, failure: 2, cpu: 28, memory: 40, connections: 5 },
+  ];
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -104,11 +140,32 @@ const ClusterManagement = () => {
   }, []);
 
   useEffect(() => {
+    if (!autoRefresh) return;
     fetchClusters();
-    // Set up periodic refresh
-    const interval = setInterval(fetchClusters, 5000); // Refresh every 5 seconds
+    const interval = setInterval(fetchClusters, refreshInterval);
     return () => clearInterval(interval);
-  }, [fetchClusters]);
+  }, [fetchClusters, autoRefresh, refreshInterval]);
+
+  // Fetch node metrics for the selected cluster
+  useEffect(() => {
+    if (!monitoringClusterId) {
+      if (clusters.length > 0) setMonitoringClusterId(clusters[0].id);
+      return;
+    }
+    if (!autoRefresh) return;
+    let cancelled = false;
+    const fetchMetrics = async () => {
+      try {
+        const metrics = await clusterService.getNodeMetrics(monitoringClusterId);
+        if (!cancelled) setNodeMetrics(metrics);
+      } catch (err) {
+        if (!cancelled) setNodeMetrics([]);
+      }
+    };
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, refreshInterval);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [monitoringClusterId, clusters, autoRefresh, refreshInterval]);
 
   const handleCreateCluster = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,18 +436,30 @@ const ClusterManagement = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 3 }, background: mainBackground, minHeight: '100vh' }}>
+      <LiveMonitoringPanel
+        nodes={nodeMetrics}
+        autoRefresh={autoRefresh}
+        refreshInterval={refreshInterval / 1000}
+        onToggleAutoRefresh={() => setAutoRefresh((prev) => !prev)}
+        onChangeInterval={(interval) => setRefreshInterval(interval * 1000)}
+      />
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ color: textPrimary, fontWeight: 700 }}>
           Cluster Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenClusterDialog(true)}
-          sx={primaryButton}
-        >
-          Create Cluster
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Tooltip title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}>
+            <IconButton onClick={() => setAutoRefresh((prev) => !prev)}>
+              {autoRefresh ? <PauseIcon /> : <PlayArrowIcon />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Settings">
+            <IconButton onClick={() => setSettingsOpen(true)}>
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {error && (
@@ -404,6 +473,25 @@ const ClusterManagement = () => {
           {success}
         </Typography>
       )}
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+        <DialogTitle>Auto-Refresh Settings</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Refresh Interval (ms)"
+            type="number"
+            value={refreshInterval}
+            onChange={e => setRefreshInterval(Number(e.target.value))}
+            inputProps={{ min: 1000, step: 1000 }}
+            fullWidth
+            helperText="Set the auto-refresh interval in milliseconds (min 1000)"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettingsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Grid container spacing={3}>
         {clusters.map((cluster) => {
@@ -508,6 +596,12 @@ const ClusterManagement = () => {
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
                             <Tooltip title="Node health status"><span>Health</span></Tooltip>
                           </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            <Tooltip title="Active connections"><span>Connections</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            <Tooltip title="Error rate (failed/total requests)"><span>Error Rate (%)</span></Tooltip>
+                          </th>
                           <th style={{ padding: 8, textAlign: 'center', fontWeight: 600 }}>
                             Actions
                           </th>
@@ -551,6 +645,8 @@ const ClusterManagement = () => {
                                   style={{ textTransform: 'capitalize' }}
                                 />
                               </td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.connections === 'number' ? node.connections : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.errorRate === 'number' ? `${node.errorRate.toFixed(2)}%` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle', textAlign: 'center' }}>
                                 <Tooltip title="Check Health">
                                   <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
