@@ -6,6 +6,9 @@ A modern, scalable load balancer built in Go with a React.js web interface. This
 
 - Multiple load balancing algorithms (Round Robin, Least Connections, Weighted Round Robin, IP Hash)
 - Cluster management with isolated configurations
+- Node-level and cluster-level live monitoring with real-time charts
+- Modular routing for clusters and nodes
+- Dedicated Node Details page for per-node metrics and monitoring
 - Rate limiting with customizable rules
 - Health checks and automatic failover
 - SSL/TLS termination
@@ -14,6 +17,13 @@ A modern, scalable load balancer built in Go with a React.js web interface. This
 - Comprehensive logging and alerting
 - Full-screen cluster management widget for improved usability
 - Node list displayed in a responsive, tabular format for better readability
+
+## Usage
+
+- Visit `/clusters` for cluster-level management and monitoring.
+- Click any node row to view detailed metrics and real-time charts for that node at `/clusters/:clusterId/nodes/:nodeId`.
+- Modular routing is handled in `frontend/src/routes/ClusterRoutes.tsx`.
+- Node details are rendered in `frontend/src/pages/NodeDetails.tsx`.
 
 ## Prerequisites
 
