@@ -23,11 +23,12 @@ const (
 )
 
 type Cluster struct {
-	ID                  string `json:"id"`
-	Name                string `json:"name"`
-	Nodes               []Node `json:"nodes"`
-	Algorithm           string `json:"algorithm"`
-	HealthCheckEndpoint string `json:"healthCheckEndpoint"`
+	ID                   string `json:"id"`
+	Name                 string `json:"name"`
+	Nodes                []Node `json:"nodes"`
+	Algorithm            string `json:"algorithm"`
+	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
+	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
 }
 
 type ClusterManager struct {
@@ -44,8 +45,9 @@ type AddNodeRequest struct {
 }
 
 type CreateClusterRequest struct {
-	Name                string `json:"name"`
-	HealthCheckEndpoint string `json:"healthCheckEndpoint"`
+	Name                 string `json:"name"`
+	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
+	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
 }
 
 func (cm *ClusterManager) GetClusters(w http.ResponseWriter, r *http.Request) {
@@ -70,11 +72,12 @@ func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cluster := &Cluster{
-		ID:                  time.Now().Format("20060102150405"),
-		Name:                request.Name,
-		Nodes:               make([]Node, 0),
-		Algorithm:           "round-robin",
-		HealthCheckEndpoint: request.HealthCheckEndpoint,
+		ID:                   time.Now().Format("20060102150405"),
+		Name:                 request.Name,
+		Nodes:                make([]Node, 0),
+		Algorithm:            "round-robin",
+		HealthCheckEndpoint:  request.HealthCheckEndpoint,
+		HealthCheckFrequency: request.HealthCheckFrequency,
 	}
 
 	cm.mu.Lock()
@@ -96,40 +99,88 @@ func (cm *ClusterManager) DeleteCluster(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (cm *ClusterManager) checkNodeHealth(nodeURL, healthCheckEndpoint string) (string, error) {
+	resp, err := http.Get(nodeURL + healthCheckEndpoint)
+	if err != nil {
+		return "unhealthy", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return "healthy", nil
+	}
+	return "unhealthy", nil
+}
+
+func (cm *ClusterManager) startNodeHealthCheck(clusterID, nodeID, nodeURL, healthCheckEndpoint string, frequency int) {
+	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		cm.mu.Lock()
+		cluster, exists := cm.clusters[clusterID]
+		if !exists {
+			cm.mu.Unlock()
+			return
+		}
+
+		for i, node := range cluster.Nodes {
+			if node.ID == nodeID {
+				healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
+				cluster.Nodes[i].HealthStatus = healthStatus
+				cluster.Nodes[i].LastChecked = time.Now()
+				cm.clusters[clusterID] = cluster
+				break
+			}
+		}
+		cm.mu.Unlock()
+	}
+}
+
 func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
 
-	var req AddNodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var request struct {
+		URL string `json:"url"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	node := &Node{
-		ID:           uuid.New().String(),
-		URL:          req.URL,
-		IsActive:     true,
-		HealthStatus: "unknown",
-		LastChecked:  time.Now(),
-	}
-
 	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
 	cluster, exists := cm.clusters[clusterID]
 	if !exists {
+		cm.mu.Unlock()
 		http.Error(w, "Cluster not found", http.StatusNotFound)
 		return
 	}
 
+	node := &Node{
+		ID:          uuid.New().String(),
+		URL:         request.URL,
+		IsActive:    true,
+		LastChecked: time.Now(),
+	}
+
+	// Perform immediate health check
+	healthStatus, err := cm.checkNodeHealth(node.URL, cluster.HealthCheckEndpoint)
+	if err != nil {
+		healthStatus = "unhealthy"
+	}
+	node.HealthStatus = healthStatus
+
 	cluster.Nodes = append(cluster.Nodes, *node)
 	cm.clusters[clusterID] = cluster
+	cm.mu.Unlock()
+
+	// Start periodic health check for this node
+	go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"node": node,
-	})
+	json.NewEncoder(w).Encode(node)
 }
 
 func (cm *ClusterManager) DeleteNode(w http.ResponseWriter, r *http.Request) {
