@@ -1,166 +1,137 @@
-import React from 'react';
-import { Container, Typography, Paper, Box, Button, Grid } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import CloudQueueIcon from '@mui/icons-material/CloudQueue';
-import GroupWorkIcon from '@mui/icons-material/GroupWork';
-import SpeedIcon from '@mui/icons-material/Speed';
-import SecurityIcon from '@mui/icons-material/Security';
-import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
-import TimelineIcon from '@mui/icons-material/Timeline';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import styles from './Home.module.css';
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-    padding: theme.spacing(4),
-    marginTop: theme.spacing(4),
-    background: 'linear-gradient(135deg, #212f45 0%, #272640 100%)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    backdropFilter: 'blur(10px)',
-}));
+const FEATURES = [
+  {
+    icon: '⚖️',
+    title: 'Smart Load Distribution',
+    desc: 'Intelligent traffic routing with round-robin, weighted, least-connections, and IP-hash algorithms. Automatically adapts to server capacity.'
+  },
+  {
+    icon: '💓',
+    title: 'Zero-Downtime Monitoring',
+    desc: 'Continuous health checks with automatic failover in under 2 seconds. Custom health check endpoints and thresholds.'
+  },
+  {
+    icon: '🔒',
+    title: 'Enterprise Security',
+    desc: 'End-to-end SSL/TLS termination, certificate management, and advanced security policies. SOC2 compliant.'
+  },
+  {
+    icon: '🎛️',
+    title: 'Beautiful Dashboard',
+    desc: 'Modern web interface with real-time metrics, one-click configuration, and mobile-responsive design.'
+  },
+  {
+    icon: '🚀',
+    title: 'Performance First',
+    desc: 'Built-in rate limiting, request caching, compression, and performance optimization tools. Handle millions of requests.'
+  },
+  {
+    icon: '📊',
+    title: 'Advanced Analytics',
+    desc: 'Comprehensive monitoring with custom alerts, detailed logs, performance insights, and historical data.'
+  },
+];
 
-const FeatureItem = styled(Typography)(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: theme.spacing(2),
-    fontSize: '1.15rem',
-    color: '#fff',
-    '& svg': {
-        marginRight: theme.spacing(1.5),
-        color: theme.palette.primary.light,
-    },
-}));
+const CUSTOMER_LOGOS = [
+  '/logo1.svg', '/logo2.svg', '/logo3.svg', '/logo4.svg', '/logo5.svg'
+];
 
-const Footer = styled(Box)(({ theme }) => ({
-    marginTop: theme.spacing(8),
-    padding: theme.spacing(2),
-    textAlign: 'center',
-    color: theme.palette.text.secondary,
-    fontSize: '1rem',
-    opacity: 0.7,
-}));
+const TYPED_WORDS = [
+  'The Future of Load Balancing',
+  'Enterprise-Grade Reliability',
+  'Real-Time Monitoring',
+  'Zero-Downtime Deployments',
+];
+
+const VERSION = 'v2.1.0';
+
+function useTypewriter(words: string[], speed = 80, pause = 1200) {
+  const [index, setIndex] = useState(0);
+  const [display, setDisplay] = useState('');
+  const [typing, setTyping] = useState(true);
+  const timeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typing) {
+      if (display.length < words[index].length) {
+        timeout.current = setTimeout(() => setDisplay(words[index].slice(0, display.length + 1)), speed);
+      } else {
+        setTyping(false);
+        timeout.current = setTimeout(() => setTyping(true), pause);
+      }
+    } else {
+      timeout.current = setTimeout(() => {
+        setDisplay('');
+        setIndex((index + 1) % words.length);
+      }, pause);
+    }
+    return () => { if (timeout.current) clearTimeout(timeout.current); };
+  }, [display, typing, index, words, speed, pause]);
+
+  return display;
+}
 
 const Home = () => {
-    const navigate = useNavigate();
-    return (
-        <Box sx={{ minHeight: '100vh', background: 'linear-gradient(120deg, #f8fafc 0%, #e0e7ef 100%)' }}>
-            <Container maxWidth="lg">
-                {/* Hero Section */}
-                <Box sx={{ mt: 10, mb: 8, textAlign: 'center' }}>
-                    <Typography 
-                        variant="h2" 
-                        component="h1" 
-                        gutterBottom 
-                        color="primary"
-                        sx={{
-                            textShadow: '0 0 20px rgba(0, 100, 102, 0.3)',
-                            letterSpacing: '0.05em',
-                            fontWeight: 800,
-                        }}
-                    >
-                        Go-Balance
-                    </Typography>
-                    <Typography 
-                        variant="h5" 
-                        component="h2" 
-                        gutterBottom 
-                        color="text.secondary"
-                        sx={{
-                            letterSpacing: '0.05em',
-                            fontWeight: 400,
-                        }}
-                    >
-                        A modern, scalable load balancer with a beautiful web interface.
-                    </Typography>
-                    <Typography 
-                        variant="body1" 
-                        color="text.secondary"
-                        sx={{ maxWidth: 600, mx: 'auto', mt: 2 }}
-                    >
-                        Effortlessly manage clusters, monitor health, and optimize traffic with real-time metrics and intuitive controls. Built for reliability, security, and ease of use.
-                    </Typography>
-                    <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center', gap: 3 }}>
-                        <Button 
-                            variant="contained" 
-                            color="primary" 
-                            size="large"
-                            sx={{
-                                px: 4,
-                                py: 1.5,
-                                fontWeight: 700,
-                                fontSize: '1.1rem',
-                                background: 'linear-gradient(45deg, #006466 30%, #065a60 90%)',
-                                '&:hover': {
-                                    background: 'linear-gradient(45deg, #065a60 30%, #0b525b 90%)',
-                                },
-                            }}
-                            onClick={() => navigate('/clusters')}
-                        >
-                            Get Started
-                        </Button>
-                        <Button 
-                            variant="outlined" 
-                            color="primary" 
-                            size="large"
-                            sx={{
-                                px: 4,
-                                py: 1.5,
-                                fontWeight: 700,
-                                fontSize: '1.1rem',
-                                borderColor: 'rgba(0, 100, 102, 0.5)',
-                                '&:hover': {
-                                    borderColor: '#006466',
-                                    backgroundColor: 'rgba(0, 100, 102, 0.1)',
-                                },
-                            }}
-                            onClick={() => navigate('/clusters')}
-                        >
-                            View Clusters
-                        </Button>
-                    </Box>
-                </Box>
+  const navigate = useNavigate();
+  const subtitle = useTypewriter(TYPED_WORDS);
 
-                {/* Features Section */}
-                <StyledPaper elevation={3}>
-                    <Typography 
-                        variant="h4" 
-                        component="h2" 
-                        gutterBottom 
-                        color="primary"
-                        sx={{
-                            textShadow: '0 0 10px rgba(0, 100, 102, 0.2)',
-                            mb: 4,
-                            fontWeight: 700,
-                        }}
-                    >
-                        Features
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><CloudQueueIcon />Multiple load balancing algorithms</FeatureItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><GroupWorkIcon />Cluster management with isolated configs</FeatureItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><SpeedIcon />Rate limiting & performance rules</FeatureItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><HealthAndSafetyIcon />Health checks & automatic failover</FeatureItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><SecurityIcon />SSL/TLS termination</FeatureItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <FeatureItem variant="body1"><TimelineIcon />Real-time monitoring & metrics</FeatureItem>
-                        </Grid>
-                    </Grid>
-                </StyledPaper>
-
-                <Footer>
-                    &copy; {new Date().getFullYear()} Go-Balance &mdash; Modern Load Balancer
-                </Footer>
-            </Container>
-        </Box>
-    );
+  return (
+    <div style={{ minHeight: '100vh', position: 'relative', background: 'linear-gradient(120deg, #f8fafc 0%, #e0e7ef 100%)' }}>
+      <div className={styles['hero-bg']} />
+      <div style={{ position: 'relative', zIndex: 1, paddingTop: 80, paddingBottom: 40 }}>
+        {/* Hero Section */}
+        <div>
+          <h1 className={styles['hero-title']}>
+            Go-Balance
+            <span className={styles['version-badge']}>{VERSION}</span>
+          </h1>
+          <div className={styles['hero-subtitle']}>
+            {subtitle}
+          </div>
+          <div className={styles['hero-description']}>
+            Deploy enterprise-grade load balancing in minutes, not hours. Built for modern applications with real-time monitoring, automatic failover, and beautiful management interface.
+          </div>
+          <div className={styles['cta-container']}>
+            <button type="button" className={styles['cta-primary']} onClick={() => navigate('/clusters')}>
+              <span role="img" aria-label="rocket">🚀</span> Start Free Trial
+            </button>
+            <button type="button" className={styles['cta-secondary']} onClick={() => navigate('/clusters')}>
+              Live Demo
+            </button>
+          </div>
+          <div className={styles['trust-indicators']}>
+            <span>99.99% Uptime</span>
+            <span>10,000+ Users</span>
+            <span>1B+ Requests Served</span>
+          </div>
+          <div className={styles['customer-logos']}>
+            {CUSTOMER_LOGOS.map((logo, i) => (
+              <img src={logo} alt={`Customer ${i + 1}`} className={styles['customer-logo']} key={logo} />
+            ))}
+          </div>
+        </div>
+        {/* Features Section */}
+        <section className={styles['features-section']}>
+          <div className={styles['features-title']}>Features</div>
+          <div className={styles['features-grid']}>
+            {FEATURES.map(f => (
+              <div className={styles['feature-card']} key={f.title}>
+                <div className={styles['feature-icon']}>{f.icon}</div>
+                <div className={styles['feature-title']}>{f.title}</div>
+                <div className={styles['feature-desc']}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <div style={{ marginTop: 60, textAlign: 'center', color: 'var(--text-secondary)', opacity: 0.7, fontSize: 16 }}>
+          &copy; {new Date().getFullYear()} Go-Balance &mdash; Modern Load Balancer
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Home; 
