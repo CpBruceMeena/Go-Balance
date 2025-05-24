@@ -485,28 +485,28 @@ const ClusterManagement = () => {
                             </Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Status <Tooltip title="Node status (active/down)"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Node status (active/down)"><span>Status</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            URL <Tooltip title="Node address"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Node address"><span>URL</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Response Time <Tooltip title="Average response time (ms)"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Average response time (ms)"><span>Response Time</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Load <Tooltip title="Current requests/sec"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Current requests/sec"><span>Load</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Uptime <Tooltip title="How long node has been running"><span>↑↓</span></Tooltip>
+                            <Tooltip title="How long node has been running"><span>Uptime</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Weight <Tooltip title="Node weight for weighted round-robin"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Node weight for weighted round-robin"><span>Weight</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Last Checked <Tooltip title="Last health check"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Last health check"><span>Last Checked</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
-                            Health <Tooltip title="Node health status"><span>↑↓</span></Tooltip>
+                            <Tooltip title="Node health status"><span>Health</span></Tooltip>
                           </th>
                           <th style={{ padding: 8, textAlign: 'center', fontWeight: 600 }}>
                             Actions
@@ -535,7 +535,7 @@ const ClusterManagement = () => {
                                 <span style={{ width: 12, height: 12, borderRadius: '50%', display: 'inline-block', background: node.isActive ? '#48BB78' : '#f44336' }} />
                               </td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.url}</td>
-                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.responseTime === 'number' ? `${node.responseTime}ms` : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.responseTime === 'number' ? `${node.responseTime.toFixed(2)}ms` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.requestsPerSec === 'number' ? node.requestsPerSec.toFixed(2) : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.createdAt ? `${Math.floor((Date.now() - new Date(node.createdAt).getTime()) / 1000 / 60)} min` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.weight === 'number' ? node.weight : 'N/A'}</td>
