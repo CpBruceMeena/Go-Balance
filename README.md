@@ -12,6 +12,8 @@ A modern, scalable load balancer built in Go with a React.js web interface. This
 - Real-time monitoring and metrics
 - Modern React.js web interface with TypeScript
 - Comprehensive logging and alerting
+- Full-screen cluster management widget for improved usability
+- Node list displayed in a responsive, tabular format for better readability
 
 ## Prerequisites
 
@@ -153,3 +155,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [React](https://reactjs.org/)
 - [Material-UI](https://mui.com/)
 - [Chart.js](https://www.chartjs.org/)
+
+## UI Improvements
+
+### June 2024
+
+- The cluster management widget is now full screen, making it easier to view and manage clusters and nodes.
+- Node lists are displayed in a table format, ensuring all node data is visible in a single row without horizontal scrolling.
+- Improved padding and layout for a more modern, user-friendly experience.
