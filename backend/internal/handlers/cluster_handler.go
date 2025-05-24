@@ -9,52 +9,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/CpBruceMeena/go-balance/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
-
-type Node struct {
-	ID           string    `json:"id"`
-	URL          string    `json:"url"`
-	IsActive     bool      `json:"isActive"`
-	HealthStatus string    `json:"healthStatus"`
-	LastChecked  time.Time `json:"lastChecked"`
-	// Request tracking fields
-	TotalRequests  int       `json:"totalRequests"`
-	RequestsPerSec float64   `json:"requestsPerSec"`
-	LastRequest    time.Time `json:"lastRequest"`
-	// For simple in-memory requests/sec calculation
-	RequestTimestamps []time.Time `json:"-"`
-}
 
 const (
 	HealthCheckEndpoint = "/health"
 )
 
-type Cluster struct {
-	ID                   string `json:"id"`
-	Name                 string `json:"name"`
-	Nodes                []Node `json:"nodes"`
-	Algorithm            string `json:"algorithm"`
-	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
-	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
-	PublicEndpoint       string `json:"publicEndpoint"`
-	// Request tracking fields
-	TotalRequests     int         `json:"totalRequests"`
-	RequestsPerSec    float64     `json:"requestsPerSec"`
-	LastRequest       time.Time   `json:"lastRequest"`
-	RequestTimestamps []time.Time `json:"-"`
-}
-
 type ClusterManager struct {
-	clusters map[string]*Cluster
+	clusters map[string]*models.Cluster
 	mu       sync.RWMutex
 	// Map to track active health check goroutines
 	healthCheckStops map[string]chan struct{}
 }
 
 var clusterManager = &ClusterManager{
-	clusters:         make(map[string]*Cluster),
+	clusters:         make(map[string]*models.Cluster),
 	healthCheckStops: make(map[string]chan struct{}),
 }
 
@@ -77,7 +49,7 @@ func (cm *ClusterManager) GetClusters(w http.ResponseWriter, r *http.Request) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
-	clusters := make([]*Cluster, 0, len(cm.clusters))
+	clusters := make([]*models.Cluster, 0, len(cm.clusters))
 	for _, cluster := range cm.clusters {
 		clusters = append(clusters, cluster)
 	}
@@ -110,10 +82,10 @@ func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) 
 	clusterNameSlug := slugify(request.Name)
 	publicEndpoint := "/api/proxy/" + clusterNameSlug
 
-	cluster := &Cluster{
+	cluster := &models.Cluster{
 		ID:                   time.Now().Format("20060102150405"),
 		Name:                 request.Name,
-		Nodes:                make([]Node, 0),
+		Nodes:                make([]models.Node, 0),
 		Algorithm:            "round-robin",
 		HealthCheckEndpoint:  request.HealthCheckEndpoint,
 		HealthCheckFrequency: request.HealthCheckFrequency,
@@ -254,11 +226,18 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	node := &Node{
-		ID:          uuid.New().String(),
-		URL:         request.URL,
-		IsActive:    true,
-		LastChecked: time.Now(),
+	node := &models.Node{
+		ID:                uuid.New().String(),
+		URL:               request.URL,
+		IsActive:          true,
+		LastChecked:       time.Now(),
+		CreatedAt:         time.Now(),
+		Weight:            1,
+		ResponseTime:      0,
+		TotalRequests:     0,
+		RequestsPerSec:    0,
+		LastRequest:       time.Time{},
+		RequestTimestamps: []time.Time{},
 	}
 
 	// Perform immediate health check
@@ -320,7 +299,7 @@ func (cm *ClusterManager) CheckNodeHealth(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var targetNode *Node
+	var targetNode *models.Node
 	for i, node := range cluster.Nodes {
 		if node.ID == nodeId {
 			targetNode = &cluster.Nodes[i]
@@ -407,7 +386,7 @@ func (cm *ClusterManager) UpdateCluster(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Create a copy of nodes to avoid holding the lock while stopping health checks
-	nodes := make([]Node, len(cluster.Nodes))
+	nodes := make([]models.Node, len(cluster.Nodes))
 	copy(nodes, cluster.Nodes)
 
 	// Update cluster configuration
@@ -436,7 +415,7 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	clusterSlug := vars["clusterSlug"]
 	rest := vars["rest"]
 
-	var targetCluster *Cluster
+	var targetCluster *models.Cluster
 	for _, cluster := range cm.clusters {
 		if slugify(cluster.Name) == clusterSlug {
 			targetCluster = cluster
@@ -487,7 +466,9 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	proxyReq.Header = r.Header
 
 	client := &http.Client{}
+	startTime := time.Now()
 	resp, err := client.Do(proxyReq)
+	responseDuration := time.Since(startTime).Seconds() * 1000 // ms
 	if err != nil {
 		http.Error(w, "Failed to reach node", http.StatusBadGateway)
 		return
@@ -512,6 +493,12 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	}
 	node.RequestTimestamps = newTimestamps
 	node.RequestsPerSec = float64(len(newTimestamps)) / 60.0
+	// Response time (simple moving average)
+	if node.TotalRequests == 1 {
+		node.ResponseTime = responseDuration
+	} else {
+		node.ResponseTime = (node.ResponseTime*float64(node.TotalRequests-1) + responseDuration) / float64(node.TotalRequests)
+	}
 	// Cluster-level
 	targetCluster.TotalRequests++
 	targetCluster.LastRequest = now

@@ -37,6 +37,9 @@ import WarningIcon from '@mui/icons-material/Warning';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CloseIcon from '@mui/icons-material/Close';
 import CircularProgress from '@mui/material/CircularProgress';
+import Checkbox from '@mui/material/Checkbox';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Collapse from '@mui/material/Collapse';
 
 // 1. Main background
 const mainBackground = 'var(--linen)';
@@ -87,6 +90,8 @@ const ClusterManagement = () => {
   const [success, setSuccess] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
   const [isAddingNode, setIsAddingNode] = useState(false);
+  const [selectedNodes, setSelectedNodes] = useState<{[key: string]: boolean}>({});
+  const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -230,6 +235,21 @@ const ClusterManagement = () => {
     if (healthy === 0) return 'unhealthy';
     return 'warning';
   }
+
+  const handleSelectNode = (nodeId: string) => {
+    setSelectedNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
+  };
+  const handleExpandRow = (nodeId: string) => {
+    setExpandedRows((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
+  };
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    e.currentTarget.style.background = 'rgba(232, 196, 160, 0.2)';
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLTableRowElement>, rowBg: string) => {
+    e.currentTarget.style.background = rowBg;
+  };
 
   if (clusters.length === 0) {
     return (
@@ -449,42 +469,117 @@ const ClusterManagement = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: colors.timberwolf }}>
-                          <th style={{ padding: 8, textAlign: 'left' }}>URL</th>
-                          <th style={{ padding: 8, textAlign: 'left' }}>Last Checked</th>
-                          <th style={{ padding: 8, textAlign: 'left' }}>Health</th>
-                          <th style={{ padding: 8, textAlign: 'left' }}>Actions</th>
+                          <th style={{ padding: 8, textAlign: 'center' }}>
+                            <Tooltip title="Select all nodes">
+                              <Checkbox
+                                checked={cluster.nodes.length > 0 && cluster.nodes.every(n => selectedNodes[n.id])}
+                                indeterminate={cluster.nodes.some(n => selectedNodes[n.id]) && !cluster.nodes.every(n => selectedNodes[n.id])}
+                                onChange={() => {
+                                  const allSelected = cluster.nodes.every(n => selectedNodes[n.id]);
+                                  const newSelected: {[key: string]: boolean} = {};
+                                  for (const n of cluster.nodes) { newSelected[n.id] = !allSelected; }
+                                  setSelectedNodes(newSelected);
+                                }}
+                                size="small"
+                              />
+                            </Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Status <Tooltip title="Node status (active/down)"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            URL <Tooltip title="Node address"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Response Time <Tooltip title="Average response time (ms)"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Load <Tooltip title="Current requests/sec"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Uptime <Tooltip title="How long node has been running"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Weight <Tooltip title="Node weight for weighted round-robin"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Last Checked <Tooltip title="Last health check"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'left', fontWeight: 600 }}>
+                            Health <Tooltip title="Node health status"><span>↑↓</span></Tooltip>
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'center', fontWeight: 600 }}>
+                            Actions
+                          </th>
+                          <th style={{ padding: 8, textAlign: 'center', fontWeight: 600 }}>
+                            <Tooltip title="Expand/collapse details"><span> </span></Tooltip>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {cluster.nodes.map((node) => (
-                          <tr key={node.id} style={{ background: '#fff', borderBottom: `1px solid ${colors.timberwolf}` }}>
-                            <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.url}</td>
-                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
-                              <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: textTertiary, verticalAlign: 'middle' }} />
-                              <span style={{ color: textTertiary, fontSize: 13 }}>{new Date(node.lastChecked).toLocaleString()}</span>
-                            </td>
-                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
-                              <Chip
-                                label={node.healthStatus}
-                                sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
-                                size="small"
-                                style={{ textTransform: 'capitalize' }}
-                              />
-                            </td>
-                            <td style={{ padding: 8, verticalAlign: 'middle' }}>
-                              <Tooltip title="Check Health">
-                                <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
-                                  <RefreshIcon />
+                        {cluster.nodes.map((node, idx) => {
+                          const isSelected = !!selectedNodes[node.id];
+                          const isExpanded = !!expandedRows[node.id];
+                          const rowBg = idx % 2 === 0 ? '#fff' : 'rgba(232, 196, 160, 0.1)';
+                          return <>
+                            <tr
+                              key={node.id}
+                              style={{ background: rowBg, borderBottom: `1px solid ${colors.timberwolf}`, transition: 'background 0.2s', cursor: 'pointer' }}
+                              onMouseEnter={handleMouseEnter}
+                              onMouseLeave={(e) => handleMouseLeave(e, rowBg)}
+                            >
+                              <td style={{ textAlign: 'center' }}>
+                                <Checkbox checked={isSelected} onChange={() => handleSelectNode(node.id)} size="small" />
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span style={{ width: 12, height: 12, borderRadius: '50%', display: 'inline-block', background: node.isActive ? '#48BB78' : '#f44336' }} />
+                              </td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.url}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.responseTime === 'number' ? `${node.responseTime}ms` : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.requestsPerSec === 'number' ? node.requestsPerSec.toFixed(2) : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{node.createdAt ? `${Math.floor((Date.now() - new Date(node.createdAt).getTime()) / 1000 / 60)} min` : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.weight === 'number' ? node.weight : 'N/A'}</td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>
+                                <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: textTertiary, verticalAlign: 'middle' }} />
+                                <span style={{ color: textTertiary, fontSize: 13 }}>{new Date(node.lastChecked).toLocaleString()}</span>
+                              </td>
+                              <td style={{ padding: 8, verticalAlign: 'middle' }}>
+                                <Chip
+                                  label={node.healthStatus}
+                                  sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
+                                  size="small"
+                                  style={{ textTransform: 'capitalize' }}
+                                />
+                              </td>
+                              <td style={{ padding: 8, verticalAlign: 'middle', textAlign: 'center' }}>
+                                <Tooltip title="Check Health">
+                                  <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
+                                    <RefreshIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Remove Node">
+                                  <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <IconButton size="small" onClick={() => handleExpandRow(node.id)}>
+                                  <ExpandMoreIcon style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                 </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Remove Node">
-                                <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                            </tr>
+                            <tr key={`${node.id}-expanded`}>
+                              <td colSpan={12} style={{ padding: 0, border: 0 }}>
+                                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                  <Box sx={{ p: 2, background: '#f9f6f2', borderBottom: `1px solid ${colors.timberwolf}` }}>
+                                    <Typography variant="body2">Detailed node metrics coming soon...</Typography>
+                                  </Box>
+                                </Collapse>
+                              </td>
+                            </tr>
+                          </>;
+                        })}
                       </tbody>
                     </table>
                   </Box>

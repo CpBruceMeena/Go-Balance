@@ -11,6 +11,9 @@ export interface Node {
   totalRequests?: number;
   requestsPerSec?: number;
   lastRequest?: string;
+  responseTime?: number;
+  createdAt?: string;
+  weight?: number;
 }
 
 export interface Cluster {
