@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,10 +37,13 @@ type Cluster struct {
 type ClusterManager struct {
 	clusters map[string]*Cluster
 	mu       sync.RWMutex
+	// Map to track active health check goroutines
+	healthCheckStops map[string]chan struct{}
 }
 
 var clusterManager = &ClusterManager{
-	clusters: make(map[string]*Cluster),
+	clusters:         make(map[string]*Cluster),
+	healthCheckStops: make(map[string]chan struct{}),
 }
 
 type AddNodeRequest struct {
@@ -76,6 +82,12 @@ func (cm *ClusterManager) CreateCluster(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Validate health check frequency
+	if request.HealthCheckFrequency <= 0 {
+		http.Error(w, "Health check frequency must be a positive number", http.StatusBadRequest)
+		return
+	}
+
 	cluster := &Cluster{
 		ID:                   time.Now().Format("20060102150405"),
 		Name:                 request.Name,
@@ -105,7 +117,18 @@ func (cm *ClusterManager) DeleteCluster(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cm *ClusterManager) checkNodeHealth(nodeURL, healthCheckEndpoint string) (string, error) {
-	resp, err := http.Get(nodeURL + healthCheckEndpoint)
+	// Ensure URL is properly formatted
+	if !strings.HasPrefix(nodeURL, "http://") && !strings.HasPrefix(nodeURL, "https://") {
+		nodeURL = "http://" + nodeURL
+	}
+
+	// Ensure health check endpoint starts with /
+	if !strings.HasPrefix(healthCheckEndpoint, "/") {
+		healthCheckEndpoint = "/" + healthCheckEndpoint
+	}
+
+	fullURL := nodeURL + healthCheckEndpoint
+	resp, err := http.Get(fullURL)
 	if err != nil {
 		return "unhealthy", err
 	}
@@ -118,6 +141,24 @@ func (cm *ClusterManager) checkNodeHealth(nodeURL, healthCheckEndpoint string) (
 }
 
 func (cm *ClusterManager) startNodeHealthCheck(clusterID, nodeID, nodeURL, healthCheckEndpoint string, frequency int) {
+	if frequency <= 0 {
+		log.Printf("[startNodeHealthCheck] Invalid frequency (%d) for node %s in cluster %s. Skipping health check goroutine.", frequency, nodeID, clusterID)
+		return
+	}
+	log.Printf("[startNodeHealthCheck] Starting health check for node %s in cluster %s with frequency %d seconds.", nodeID, clusterID, frequency)
+	// Create a stop channel for this health check
+	stopChan := make(chan struct{})
+	stopKey := fmt.Sprintf("%s-%s", clusterID, nodeID)
+
+	// Store the stop channel
+	cm.mu.Lock()
+	// If there's an existing health check, stop it first
+	if existingStop, exists := cm.healthCheckStops[stopKey]; exists {
+		close(existingStop)
+	}
+	cm.healthCheckStops[stopKey] = stopChan
+	cm.mu.Unlock()
+
 	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
 	defer ticker.Stop()
 
@@ -125,10 +166,28 @@ func (cm *ClusterManager) startNodeHealthCheck(clusterID, nodeID, nodeURL, healt
 	healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
 	cm.updateNodeHealthStatus(clusterID, nodeID, healthStatus)
 
-	for range ticker.C {
-		healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
-		cm.updateNodeHealthStatus(clusterID, nodeID, healthStatus)
+	for {
+		select {
+		case <-ticker.C:
+			healthStatus, err := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
+			if err != nil {
+				healthStatus = "unhealthy"
+			}
+			cm.updateNodeHealthStatus(clusterID, nodeID, healthStatus)
+		case <-stopChan:
+			return
+		}
 	}
+}
+
+func (cm *ClusterManager) stopNodeHealthCheck(clusterID, nodeID string) {
+	stopKey := fmt.Sprintf("%s-%s", clusterID, nodeID)
+	cm.mu.Lock()
+	if stopChan, exists := cm.healthCheckStops[stopKey]; exists {
+		close(stopChan)
+		delete(cm.healthCheckStops, stopKey)
+	}
+	cm.mu.Unlock()
 }
 
 func (cm *ClusterManager) updateNodeHealthStatus(clusterID, nodeID, healthStatus string) {
@@ -164,6 +223,9 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trim whitespace from the node URL
+	request.URL = strings.TrimSpace(request.URL)
+
 	cm.mu.Lock()
 	cluster, exists := cm.clusters[clusterID]
 	if !exists {
@@ -183,6 +245,7 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	healthStatus, err := cm.checkNodeHealth(node.URL, cluster.HealthCheckEndpoint)
 	if err != nil {
 		healthStatus = "unhealthy"
+		log.Printf("[AddNode] Immediate health check failed for node %s: %v", node.URL, err)
 	}
 	node.HealthStatus = healthStatus
 	node.IsActive = healthStatus == "healthy"
@@ -190,6 +253,8 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	cluster.Nodes = append(cluster.Nodes, *node)
 	cm.clusters[clusterID] = cluster
 	cm.mu.Unlock()
+
+	log.Printf("[AddNode] Added node %s to cluster %s. Starting health check goroutine.", node.ID, clusterID)
 
 	// Start periodic health check for this node
 	go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
@@ -310,25 +375,39 @@ func (cm *ClusterManager) UpdateCluster(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
+	// Validate health check frequency
+	if request.HealthCheckFrequency <= 0 {
+		http.Error(w, "Health check frequency must be a positive number", http.StatusBadRequest)
+		return
+	}
 
+	cm.mu.Lock()
 	cluster, exists := cm.clusters[clusterID]
 	if !exists {
+		cm.mu.Unlock()
 		http.Error(w, "Cluster not found", http.StatusNotFound)
 		return
 	}
 
+	// Create a copy of nodes to avoid holding the lock while stopping health checks
+	nodes := make([]Node, len(cluster.Nodes))
+	copy(nodes, cluster.Nodes)
+
 	// Update cluster configuration
 	cluster.HealthCheckEndpoint = request.HealthCheckEndpoint
 	cluster.HealthCheckFrequency = request.HealthCheckFrequency
+	cm.clusters[clusterID] = cluster
+	cm.mu.Unlock()
 
-	// Restart health checks for all nodes with new configuration
-	for _, node := range cluster.Nodes {
-		go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
+	// Stop existing health checks (outside the lock)
+	for _, node := range nodes {
+		cm.stopNodeHealthCheck(clusterID, node.ID)
 	}
 
-	cm.clusters[clusterID] = cluster
+	// Start new health checks with updated configuration
+	for _, node := range nodes {
+		go cm.startNodeHealthCheck(clusterID, node.ID, node.URL, cluster.HealthCheckEndpoint, cluster.HealthCheckFrequency)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cluster)
