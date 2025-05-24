@@ -32,9 +32,12 @@ export const clusterService = {
     await axios.delete(`${API_BASE_URL}/clusters/${clusterId}`);
   },
 
-  async addNode(clusterId: string, url: string): Promise<Node> {
-    const response = await axios.post<Node>(`${API_BASE_URL}/clusters/${clusterId}/nodes`, { url });
-    return response.data;
+  async addNode(clusterId: string, url: string, healthCheckUrl: string): Promise<Node> {
+    const response = await axios.post<{ node: Node }>(`${API_BASE_URL}/clusters/${clusterId}/nodes`, {
+      url,
+      healthCheckUrl,
+    });
+    return response.data.node;
   },
 
   async deleteNode(clusterId: string, nodeId: string): Promise<void> {

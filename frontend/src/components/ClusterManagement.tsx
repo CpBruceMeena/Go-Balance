@@ -34,6 +34,7 @@ const ClusterManagement = () => {
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [newClusterName, setNewClusterName] = useState('');
   const [newNodeUrl, setNewNodeUrl] = useState('');
+  const [newNodeHealthCheckUrl, setNewNodeHealthCheckUrl] = useState('/health');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,13 +74,14 @@ const ClusterManagement = () => {
   const handleAddNode = async () => {
     if (selectedCluster && newNodeUrl.trim()) {
       try {
-        const newNode = await clusterService.addNode(selectedCluster, newNodeUrl);
+        const newNode = await clusterService.addNode(selectedCluster, newNodeUrl, newNodeHealthCheckUrl);
         setClusters(clusters.map(cluster => 
           cluster.id === selectedCluster
             ? { ...cluster, nodes: [...cluster.nodes, newNode] }
             : cluster
         ));
         setNewNodeUrl('');
+        setNewNodeHealthCheckUrl('/health');
         setOpenNodeDialog(false);
         setError(null);
       } catch (err) {
@@ -285,6 +287,16 @@ const ClusterManagement = () => {
             value={newNodeUrl}
             onChange={(e) => setNewNodeUrl(e.target.value)}
             placeholder="http://example.com:8080"
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Health Check URL"
+            fullWidth
+            value={newNodeHealthCheckUrl}
+            onChange={(e) => setNewNodeHealthCheckUrl(e.target.value)}
+            placeholder="/health"
+            helperText="The endpoint to check node health (e.g., /health, /ping)"
           />
         </DialogContent>
         <DialogActions>
