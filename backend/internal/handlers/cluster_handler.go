@@ -6,15 +6,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 type Node struct {
-	ID           string    `json:"id"`
-	URL          string    `json:"url"`
-	IsActive     bool      `json:"isActive"`
-	HealthStatus string    `json:"healthStatus"`
-	LastChecked  time.Time `json:"lastChecked"`
+	ID             string    `json:"id"`
+	URL            string    `json:"url"`
+	IsActive       bool      `json:"isActive"`
+	HealthStatus   string    `json:"healthStatus"`
+	LastChecked    time.Time `json:"lastChecked"`
+	HealthCheckUrl string    `json:"healthCheckUrl"`
 }
 
 type Cluster struct {
@@ -31,6 +33,11 @@ type ClusterManager struct {
 
 var clusterManager = &ClusterManager{
 	clusters: make(map[string]*Cluster),
+}
+
+type AddNodeRequest struct {
+	URL            string `json:"url"`
+	HealthCheckUrl string `json:"healthCheckUrl"`
 }
 
 func (cm *ClusterManager) GetClusters(w http.ResponseWriter, r *http.Request) {
@@ -86,36 +93,37 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
 
-	var request struct {
-		URL string `json:"url"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	var req AddNodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	node := &Node{
+		ID:             uuid.New().String(),
+		URL:            req.URL,
+		IsActive:       true,
+		HealthStatus:   "unknown",
+		LastChecked:    time.Now(),
+		HealthCheckUrl: req.HealthCheckUrl,
+	}
+
 	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
 	cluster, exists := cm.clusters[clusterID]
 	if !exists {
-		cm.mu.Unlock()
 		http.Error(w, "Cluster not found", http.StatusNotFound)
 		return
 	}
 
-	node := Node{
-		ID:           time.Now().Format("20060102150405"),
-		URL:          request.URL,
-		IsActive:     true,
-		HealthStatus: "unknown",
-		LastChecked:  time.Now(),
-	}
-
-	cluster.Nodes = append(cluster.Nodes, node)
-	cm.mu.Unlock()
+	cluster.Nodes = append(cluster.Nodes, *node)
+	cm.clusters[clusterID] = cluster
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(node)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"node": node,
+	})
 }
 
 func (cm *ClusterManager) DeleteNode(w http.ResponseWriter, r *http.Request) {
@@ -146,32 +154,50 @@ func (cm *ClusterManager) DeleteNode(w http.ResponseWriter, r *http.Request) {
 
 func (cm *ClusterManager) CheckNodeHealth(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	clusterID := vars["clusterId"]
-	nodeID := vars["nodeId"]
+	clusterId := vars["clusterId"]
+	nodeId := vars["nodeId"]
 
 	cm.mu.Lock()
-	cluster, exists := cm.clusters[clusterID]
+	defer cm.mu.Unlock()
+
+	cluster, exists := cm.clusters[clusterId]
 	if !exists {
-		cm.mu.Unlock()
 		http.Error(w, "Cluster not found", http.StatusNotFound)
 		return
 	}
 
+	var targetNode *Node
 	for i, node := range cluster.Nodes {
-		if node.ID == nodeID {
-			// TODO: Implement actual health check
-			cluster.Nodes[i].LastChecked = time.Now()
-			cluster.Nodes[i].HealthStatus = "healthy" // This should be determined by actual health check
-			cm.mu.Unlock()
-
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(cluster.Nodes[i])
-			return
+		if node.ID == nodeId {
+			targetNode = &cluster.Nodes[i]
+			break
 		}
 	}
-	cm.mu.Unlock()
 
-	http.Error(w, "Node not found", http.StatusNotFound)
+	if targetNode == nil {
+		http.Error(w, "Node not found", http.StatusNotFound)
+		return
+	}
+
+	// Perform health check using the node's custom health check URL
+	healthCheckUrl := targetNode.URL + targetNode.HealthCheckUrl
+	resp, err := http.Get(healthCheckUrl)
+	if err != nil {
+		targetNode.HealthStatus = "unhealthy"
+		targetNode.LastChecked = time.Now()
+		json.NewEncoder(w).Encode(targetNode)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		targetNode.HealthStatus = "healthy"
+	} else {
+		targetNode.HealthStatus = "unhealthy"
+	}
+	targetNode.LastChecked = time.Now()
+
+	json.NewEncoder(w).Encode(targetNode)
 }
 
 func (cm *ClusterManager) UpdateAlgorithm(w http.ResponseWriter, r *http.Request) {
