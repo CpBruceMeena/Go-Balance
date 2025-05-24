@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Server, AddServerRequest } from '../services/loadBalancerService';
 import { loadBalancerService } from '../services/loadBalancerService';
 import { colors } from '../theme/colors';
