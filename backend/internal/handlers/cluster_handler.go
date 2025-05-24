@@ -19,6 +19,12 @@ type Node struct {
 	IsActive     bool      `json:"isActive"`
 	HealthStatus string    `json:"healthStatus"`
 	LastChecked  time.Time `json:"lastChecked"`
+	// Request tracking fields
+	TotalRequests  int       `json:"totalRequests"`
+	RequestsPerSec float64   `json:"requestsPerSec"`
+	LastRequest    time.Time `json:"lastRequest"`
+	// For simple in-memory requests/sec calculation
+	RequestTimestamps []time.Time `json:"-"`
 }
 
 const (
@@ -33,6 +39,11 @@ type Cluster struct {
 	HealthCheckEndpoint  string `json:"healthCheckEndpoint"`
 	HealthCheckFrequency int    `json:"healthCheckFrequency"` // Frequency in seconds
 	PublicEndpoint       string `json:"publicEndpoint"`
+	// Request tracking fields
+	TotalRequests     int         `json:"totalRequests"`
+	RequestsPerSec    float64     `json:"requestsPerSec"`
+	LastRequest       time.Time   `json:"lastRequest"`
+	RequestTimestamps []time.Time `json:"-"`
 }
 
 type ClusterManager struct {
@@ -425,7 +436,6 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 	clusterSlug := vars["clusterSlug"]
 	rest := vars["rest"]
 
-	cm.mu.RLock()
 	var targetCluster *Cluster
 	for _, cluster := range cm.clusters {
 		if slugify(cluster.Name) == clusterSlug {
@@ -433,7 +443,6 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 			break
 		}
 	}
-	cm.mu.RUnlock()
 
 	if targetCluster == nil {
 		http.Error(w, "Cluster not found", http.StatusNotFound)
@@ -447,9 +456,11 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 
 	// Simple round-robin: pick the next active node
 	var nodeURL string
-	for _, node := range targetCluster.Nodes {
+	var nodeIdx int
+	for i, node := range targetCluster.Nodes {
 		if node.IsActive {
 			nodeURL = node.URL
+			nodeIdx = i
 			break
 		}
 	}
@@ -482,6 +493,39 @@ func (cm *ClusterManager) ProxyToCluster(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	defer resp.Body.Close()
+
+	// --- Request tracking logic ---
+	now := time.Now()
+	cm.mu.Lock()
+	// Node-level
+	node := &targetCluster.Nodes[nodeIdx]
+	node.TotalRequests++
+	node.LastRequest = now
+	node.RequestTimestamps = append(node.RequestTimestamps, now)
+	// Remove timestamps older than 60s
+	cutoff := now.Add(-60 * time.Second)
+	newTimestamps := make([]time.Time, 0, len(node.RequestTimestamps))
+	for _, t := range node.RequestTimestamps {
+		if t.After(cutoff) {
+			newTimestamps = append(newTimestamps, t)
+		}
+	}
+	node.RequestTimestamps = newTimestamps
+	node.RequestsPerSec = float64(len(newTimestamps)) / 60.0
+	// Cluster-level
+	targetCluster.TotalRequests++
+	targetCluster.LastRequest = now
+	targetCluster.RequestTimestamps = append(targetCluster.RequestTimestamps, now)
+	newCTimestamps := make([]time.Time, 0, len(targetCluster.RequestTimestamps))
+	for _, t := range targetCluster.RequestTimestamps {
+		if t.After(cutoff) {
+			newCTimestamps = append(newCTimestamps, t)
+		}
+	}
+	targetCluster.RequestTimestamps = newCTimestamps
+	targetCluster.RequestsPerSec = float64(len(newCTimestamps)) / 60.0
+	cm.mu.Unlock()
+	// --- End request tracking logic ---
 
 	for k, v := range resp.Header {
 		for _, vv := range v {

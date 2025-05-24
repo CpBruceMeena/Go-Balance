@@ -418,22 +418,16 @@ const ClusterManagement = () => {
                       <ContentCopyIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Box
-                        component="span"
-                        sx={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          backgroundColor: clusterStatusColor,
-                          display: 'inline-block',
-                          mr: 1,
-                          border: '2px solid #fff',
-                        }}
-                        aria-label={clusterStatusLabel}
-                      />
-                      <Typography variant="h6" sx={{ color: '#333', fontWeight: 700 }}>{cluster.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: clusterHealth === 'healthy' ? '#48BB78' : (clusterHealth === 'warning' ? '#ffb300' : '#f44336'), display: 'inline-block', marginRight: 8 }} />
+                        <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#222', mr: 2 }}>{cluster.name}</Typography>
+                      </Box>
+                      <Box className="cluster-status" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14, color: textSecondary }}>
+                        <span className="status-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#48BB78', display: 'inline-block', marginRight: 4 }} />
+                        {`${cluster.nodes.filter(n => n.healthStatus === 'healthy').length}/${cluster.nodes.length} nodes healthy`}
+                      </Box>
                     </Box>
                     <Tooltip title="Delete Cluster">
                       <IconButton onClick={() => handleDeleteCluster(cluster.id)} color="error">

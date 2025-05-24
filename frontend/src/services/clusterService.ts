@@ -8,6 +8,9 @@ export interface Node {
   isActive: boolean;
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastChecked: string;
+  totalRequests?: number;
+  requestsPerSec?: number;
+  lastRequest?: string;
 }
 
 export interface Cluster {
@@ -20,6 +23,9 @@ export interface Cluster {
   createdAt: string;
   updatedAt: string;
   publicEndpoint: string;
+  totalRequests?: number;
+  requestsPerSec?: number;
+  lastRequest?: string;
 }
 
 export interface CreateClusterRequest {
