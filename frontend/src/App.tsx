@@ -1,8 +1,9 @@
-import React from 'react';
+import type React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Container, Box } from '@mui/material';
 import { colors } from './theme/colors';
 import ClusterManagement from './components/ClusterManagement';
+import Home from './pages/Home';
 
 const App: React.FC = () => {
   return (
@@ -26,7 +27,7 @@ const App: React.FC = () => {
 
         <Container maxWidth="lg" sx={{ mt: 4 }}>
           <Routes>
-            <Route path="/" element={<div>Welcome to Go-Balance</div>} />
+            <Route path="/" element={<Home />} />
             <Route path="/clusters" element={<ClusterManagement />} />
           </Routes>
         </Container>

@@ -247,7 +247,7 @@ const ClusterManagement = () => {
               variant="contained"
               sx={{
                 backgroundColor: colors.paleDogwood,
-                color: colors.linen,
+                color: '#333',
                 fontWeight: 700,
                 borderRadius: 3,
                 px: 5,
@@ -257,7 +257,7 @@ const ClusterManagement = () => {
                 fontSize: '1.1rem',
                 '&:hover': {
                   backgroundColor: colors.champagnePink,
-                  color: colors.linen,
+                  color: '#333',
                 },
               }}
               startIcon={<AddCircleOutlineIcon />}
