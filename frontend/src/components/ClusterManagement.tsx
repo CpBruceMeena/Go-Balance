@@ -59,6 +59,9 @@ const ClusterManagement = () => {
 
   useEffect(() => {
     fetchClusters();
+    // Set up periodic refresh
+    const interval = setInterval(fetchClusters, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
   }, [fetchClusters]);
 
   const handleCreateCluster = async (e: React.FormEvent) => {

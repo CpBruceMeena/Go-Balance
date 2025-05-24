@@ -116,24 +116,33 @@ func (cm *ClusterManager) startNodeHealthCheck(clusterID, nodeID, nodeURL, healt
 	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		cm.mu.Lock()
-		cluster, exists := cm.clusters[clusterID]
-		if !exists {
-			cm.mu.Unlock()
-			return
-		}
+	// Perform initial health check
+	healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
+	cm.updateNodeHealthStatus(clusterID, nodeID, healthStatus)
 
-		for i, node := range cluster.Nodes {
-			if node.ID == nodeID {
-				healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
-				cluster.Nodes[i].HealthStatus = healthStatus
-				cluster.Nodes[i].LastChecked = time.Now()
-				cm.clusters[clusterID] = cluster
-				break
-			}
+	for range ticker.C {
+		healthStatus, _ := cm.checkNodeHealth(nodeURL, healthCheckEndpoint)
+		cm.updateNodeHealthStatus(clusterID, nodeID, healthStatus)
+	}
+}
+
+func (cm *ClusterManager) updateNodeHealthStatus(clusterID, nodeID, healthStatus string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cluster, exists := cm.clusters[clusterID]
+	if !exists {
+		return
+	}
+
+	for i, node := range cluster.Nodes {
+		if node.ID == nodeID {
+			cluster.Nodes[i].HealthStatus = healthStatus
+			cluster.Nodes[i].LastChecked = time.Now()
+			cluster.Nodes[i].IsActive = healthStatus == "healthy"
+			cm.clusters[clusterID] = cluster
+			break
 		}
-		cm.mu.Unlock()
 	}
 }
 
@@ -171,6 +180,7 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 		healthStatus = "unhealthy"
 	}
 	node.HealthStatus = healthStatus
+	node.IsActive = healthStatus == "healthy"
 
 	cluster.Nodes = append(cluster.Nodes, *node)
 	cm.clusters[clusterID] = cluster
