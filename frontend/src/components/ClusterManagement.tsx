@@ -47,6 +47,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import LiveMonitoringPanel from './LiveMonitoringPanel';
 import { useNavigate } from 'react-router-dom';
+import styles from './ClusterManagement.module.css';
 
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
@@ -308,6 +309,26 @@ const ClusterManagement = () => {
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLTableRowElement>, rowBg: string) => {
     e.currentTarget.style.background = rowBg;
+  };
+
+  const handleTestAllNodes = async (clusterId: string) => {
+    // TODO: Implement backend call to test all nodes
+    alert(`Test All Nodes triggered for cluster ${clusterId}`);
+  };
+
+  const handleDrainNode = async (clusterId: string, nodeId: string) => {
+    // TODO: Implement backend call to drain node
+    alert(`Drain Node triggered for node ${nodeId}`);
+  };
+
+  const handleBulkDrain = async (clusterId: string) => {
+    // TODO: Implement backend call to drain selected nodes
+    alert(`Drain Selected Nodes: ${Object.keys(selectedNodes).filter(id => selectedNodes[id]).join(', ')}`);
+  };
+
+  const handleBulkDelete = async (clusterId: string) => {
+    // TODO: Implement backend call to delete selected nodes
+    alert(`Delete Selected Nodes: ${Object.keys(selectedNodes).filter(id => selectedNodes[id]).join(', ')}`);
   };
 
   if (clusters.length === 0) {
@@ -623,7 +644,6 @@ const ClusterManagement = () => {
                               style={{ background: rowBg, borderBottom: `1px solid ${colors.timberwolf}`, transition: 'background 0.2s', cursor: 'pointer' }}
                               onMouseEnter={handleMouseEnter}
                               onMouseLeave={(e) => handleMouseLeave(e, rowBg)}
-                              onClick={() => navigate(`/clusters/${cluster.id}/nodes/${node.id}`)}
                             >
                               <td style={{ textAlign: 'center' }}>
                                 <Checkbox checked={isSelected} onChange={() => handleSelectNode(node.id)} size="small" />
@@ -651,21 +671,40 @@ const ClusterManagement = () => {
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.connections === 'number' ? node.connections : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.errorRate === 'number' ? `${node.errorRate.toFixed(2)}%` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle', textAlign: 'center' }}>
-                                <Tooltip title="Check Health">
-                                  <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
-                                    <RefreshIcon />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Remove Node">
-                                  <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Tooltip>
+                                <Box className={styles['action-group']}>
+                                  <Tooltip title="Check Health">
+                                    <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
+                                      <RefreshIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Drain Node">
+                                    <IconButton edge="end" onClick={() => handleDrainNode(cluster.id, node.id)} className={styles['secondary-action']}>
+                                      <HealthAndSafetyIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Remove Node">
+                                    <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 <IconButton size="small" onClick={() => handleExpandRow(node.id)}>
                                   <ExpandMoreIcon style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                 </IconButton>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="row-link"
+                                  onClick={() => navigate(`/clusters/${cluster.id}/nodes/${node.id}`)}
+                                  tabIndex={0}
+                                  aria-label="View node details"
+                                  style={{ background: 'none', border: 'none', color: colors.primary, cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                  View
+                                </button>
                               </td>
                             </tr>
                             <tr key={`${node.id}-expanded`}>
@@ -682,19 +721,15 @@ const ClusterManagement = () => {
                       </tbody>
                     </table>
                   </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                    <Tooltip title="Add Node">
-                      <Button
-                        startIcon={<AddIcon />}
-                        onClick={() => {
-                          setSelectedCluster(cluster.id);
-                          setOpenNodeDialog(true);
-                        }}
-                        sx={primaryButton}
-                      >
-                        Add Node
-                      </Button>
-                    </Tooltip>
+                  <Box className={styles['action-group']} sx={{ mb: 2, justifyContent: 'flex-end' }}>
+                    <Button className={styles['primary-action']} onClick={() => { setSelectedCluster(cluster.id); setOpenNodeDialog(true); }} startIcon={<AddIcon />}>Add Node</Button>
+                    <Button className={styles['secondary-action']} onClick={() => handleTestAllNodes(cluster.id)} startIcon={<RefreshIcon />}>Test All Nodes</Button>
+                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} onClick={() => handleBulkDrain(cluster.id)}>
+                      Drain Selected
+                    </Button>
+                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} color="error" onClick={() => handleBulkDelete(cluster.id)}>
+                      Delete Selected
+                    </Button>
                   </Box>
                   {editingCluster === cluster.id ? (
                     <Box sx={{ mt: 2 }}>

@@ -1,0 +1,18 @@
+.action-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.primary-action {
+  background: var(--champagne-pink);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.secondary-action {
+  background: transparent;
+  border: 1px solid var(--timberwolf);
+  padding: 8px 12px;
+  border-radius: 6px;
+} 
