@@ -20,8 +20,7 @@ import {
   Chip,
   Avatar,
   Tooltip,
-  MenuItem,
-  Paper
+  MenuItem
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -136,19 +135,6 @@ const ClusterManagement = () => {
     } catch (err) {
       setError('Failed to check node health');
       console.error('Error checking node health:', err);
-    }
-  };
-
-  const handleUpdateAlgorithm = async (clusterId: string, algorithm: Cluster['algorithm']) => {
-    try {
-      const updatedCluster = await clusterService.updateClusterAlgorithm(clusterId, algorithm);
-      setClusters(clusters.map(cluster =>
-        cluster.id === clusterId ? updatedCluster : cluster
-      ));
-      setError('');
-    } catch (err) {
-      setError('Failed to update algorithm');
-      console.error('Error updating algorithm:', err);
     }
   };
 
@@ -433,13 +419,6 @@ const ClusterManagement = () => {
         onClose={() => setOpenNodeDialog(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            backgroundColor: colors.prussianBlue,
-            minWidth: { xs: '90%', sm: '500px' },
-            maxWidth: '90vw'
-          }
-        }}
       >
         <DialogTitle sx={{ 
           backgroundColor: colors.prussianBlue,
