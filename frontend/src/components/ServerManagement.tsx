@@ -48,15 +48,15 @@ const ServerManagement = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4" style={{ color: colors.caribbeanCurrent }}>
+      <h2 className="text-2xl font-bold mb-4" style={{ color: colors.primary }}>
         Server Management
       </h2>
       
       {error && (
         <div className="border px-4 py-3 rounded mb-4" style={{ 
-          backgroundColor: colors.darkPurple2,
-          borderColor: colors.palatinate,
-          color: colors.caribbeanCurrent
+          backgroundColor: colors.onyx,
+          borderColor: colors.onyx,
+          color: colors.primary
         }}>
           {error}
         </div>
@@ -71,9 +71,9 @@ const ServerManagement = () => {
             placeholder="Server URL"
             className="flex-1 p-2 rounded"
             style={{ 
-              backgroundColor: colors.prussianBlue,
-              color: colors.caribbeanCurrent,
-              border: `1px solid ${colors.midnightGreen}`
+              backgroundColor: colors.gunmetal,
+              color: colors.primary,
+              border: `1px solid ${colors.raisinBlack}`
             }}
             required
           />
@@ -84,9 +84,9 @@ const ServerManagement = () => {
             placeholder="Weight"
             className="w-24 p-2 rounded"
             style={{ 
-              backgroundColor: colors.prussianBlue,
-              color: colors.caribbeanCurrent,
-              border: `1px solid ${colors.midnightGreen}`
+              backgroundColor: colors.gunmetal,
+              color: colors.primary,
+              border: `1px solid ${colors.raisinBlack}`
             }}
             min="1"
             required
@@ -95,9 +95,9 @@ const ServerManagement = () => {
             type="submit"
             className="px-4 py-2 rounded"
             style={{ 
-              backgroundColor: colors.midnightGreen,
-              color: colors.caribbeanCurrent,
-              border: `1px solid ${colors.midnightGreen2}`
+              backgroundColor: colors.raisinBlack,
+              color: colors.primary,
+              border: `1px solid ${colors.raisinBlack}`
             }}
           >
             Add Server
@@ -111,25 +111,25 @@ const ServerManagement = () => {
             key={id}
             className="rounded p-4 flex justify-between items-center"
             style={{ 
-              backgroundColor: colors.prussianBlue,
-              border: `1px solid ${colors.midnightGreen}`
+              backgroundColor: colors.gunmetal,
+              border: `1px solid ${colors.raisinBlack}`
             }}
           >
             <div>
-              <h3 className="font-bold" style={{ color: colors.caribbeanCurrent }}>
+              <h3 className="font-bold" style={{ color: colors.primary }}>
                 {server.url}
               </h3>
-              <p className="text-sm" style={{ color: colors.midnightGreen }}>
+              <p className="text-sm" style={{ color: colors.raisinBlack }}>
                 Weight: {server.weight} | Status:{' '}
                 <span
                   style={{
-                    color: server.isActive ? colors.caribbeanCurrent : colors.palatinate
+                    color: server.isActive ? colors.primary : colors.onyx
                   }}
                 >
                   {server.isActive ? 'Active' : 'Inactive'}
                 </span>
               </p>
-              <div className="text-sm mt-2" style={{ color: colors.midnightGreen }}>
+              <div className="text-sm mt-2" style={{ color: colors.raisinBlack }}>
                 <p>Total Requests: {server.stats.totalRequests}</p>
                 <p>Active Requests: {server.stats.activeRequests}</p>
                 <p>Failed Requests: {server.stats.failedRequests}</p>
@@ -143,9 +143,9 @@ const ServerManagement = () => {
               onClick={() => handleRemoveServer(id)}
               className="px-3 py-1 rounded"
               style={{ 
-                backgroundColor: colors.darkPurple2,
-                color: colors.caribbeanCurrent,
-                border: `1px solid ${colors.palatinate}`
+                backgroundColor: colors.onyx,
+                color: colors.primary,
+                border: `1px solid ${colors.onyx}`
               }}
             >
               Remove

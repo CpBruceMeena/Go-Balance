@@ -5,6 +5,21 @@
   --text-color: #333;
   --error-color: #f44336;
   --success-color: #4caf50;
+  --mimi-pink: #ffd6ff;
+  --mauve: #e7c6ff;
+  --mauve-2: #c8b6ff;
+  --periwinkle: #b8c0ff;
+  --periwinkle-2: #bbd0ff;
+  --gradient-top: linear-gradient(0deg, #ffd6ff, #e7c6ff, #c8b6ff, #b8c0ff, #bbd0ff);
+  --gradient-right: linear-gradient(90deg, #ffd6ff, #e7c6ff, #c8b6ff, #b8c0ff, #bbd0ff);
+  --gradient-bottom: linear-gradient(180deg, #ffd6ff, #e7c6ff, #c8b6ff, #b8c0ff, #bbd0ff);
+  --gradient-left: linear-gradient(270deg, #ffd6ff, #e7c6ff, #c8b6ff, #b8c0ff, #bbd0ff);
+  --gradient-radial: radial-gradient(#ffd6ff, #e7c6ff, #c8b6ff, #b8c0ff, #bbd0ff);
+  --onyx: #403f4c;
+  --raisin-black: #2c2b3c;
+  --gunmetal: #1b2432;
+  --rich-black: #121420;
+  --gradient-radial: radial-gradient(#403f4c, #2c2b3c, #1b2432, #121420);
 }
 
 * {
@@ -14,14 +29,10 @@
 }
 
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--background-color);
-  color: var(--text-color);
+  background: var(--gradient-radial);
+  min-height: 100vh;
+  font-family: 'Inter', 'Roboto', Arial, sans-serif;
+  color: var(--onyx);
 }
 
 code {

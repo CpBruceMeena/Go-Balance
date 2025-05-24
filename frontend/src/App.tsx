@@ -8,7 +8,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <Box sx={{ flexGrow: 1 }}>
-        <AppBar position="static" sx={{ backgroundColor: colors.caribbeanCurrent }}>
+        <AppBar position="static" sx={{ backgroundColor: colors.primary }}>
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Go-Balance
