@@ -8,9 +8,6 @@ import {
   DialogContent, 
   DialogActions, 
   Button, 
-  List, 
-  ListItem, 
-  ListItemText, 
   IconButton, 
   Typography, 
   Grid,
@@ -18,7 +15,6 @@ import {
   Card,
   CardContent,
   Chip,
-  Avatar,
   Tooltip,
   MenuItem
 } from '@mui/material';
@@ -108,29 +104,6 @@ const ClusterManagement = () => {
   const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
   const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  // Mock data for charts and new metrics
-  const mockRequestDistribution = {
-    labels: ['Node 1', 'Node 2', 'Node 3'],
-    datasets: [{
-      label: 'Requests',
-      data: [120, 90, 60],
-      backgroundColor: ['#48BB78', '#f6ad55', '#f56565'],
-    }],
-  };
-  const mockSuccessFailure = {
-    labels: ['Success', 'Failure'],
-    datasets: [{
-      label: 'Requests',
-      data: [260, 12],
-      backgroundColor: ['#48BB78', '#f56565'],
-    }],
-  };
-  const mockNodeMetrics = [
-    { id: '1', url: 'http://127.0.0.1:3001', requests: 120, success: 115, failure: 5, cpu: 32, memory: 60, connections: 10 },
-    { id: '2', url: 'http://127.0.0.1:3002', requests: 80, success: 75, failure: 5, cpu: 45, memory: 50, connections: 7 },
-    { id: '3', url: 'http://127.0.0.1:3000', requests: 100, success: 98, failure: 2, cpu: 28, memory: 40, connections: 5 },
-  ];
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -519,7 +492,6 @@ const ClusterManagement = () => {
       <Grid container spacing={3}>
         {clusters.map((cluster) => {
           const clusterHealth = getClusterHealthStatus(cluster);
-          const clusterStatusColor = clusterHealth === 'healthy' ? '#4caf50' : clusterHealth === 'warning' ? '#ffb300' : '#f44336';
           const clusterStatusLabel = clusterHealth === 'healthy' ? 'Healthy' : clusterHealth === 'warning' ? 'Warning' : 'Unhealthy';
           const clusterStatusIcon = clusterHealth === 'healthy' ? <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18, mr: 1 }} /> : clusterHealth === 'warning' ? <WarningIcon sx={{ color: '#ffb300', fontSize: 18, mr: 1 }} /> : <ErrorIcon sx={{ color: '#f44336', fontSize: 18, mr: 1 }} />;
 
