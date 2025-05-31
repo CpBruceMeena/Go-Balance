@@ -44,6 +44,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import LiveMonitoringPanel from './LiveMonitoringPanel';
 import { useNavigate } from 'react-router-dom';
 import styles from './ClusterManagement.module.css';
+import ClusterTabs from './ClusterTabs';
 
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
@@ -432,14 +433,6 @@ const ClusterManagement = () => {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 3 }, background: mainBackground, minHeight: '100vh' }}>
-      <LiveMonitoringPanel
-        nodes={nodeMetrics}
-        autoRefresh={autoRefresh}
-        refreshInterval={refreshInterval / 1000}
-        onToggleAutoRefresh={() => setAutoRefresh((prev) => !prev)}
-        onChangeInterval={(interval) => setRefreshInterval(interval * 1000)}
-      />
-
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ color: textPrimary, fontWeight: 700 }}>
           Cluster Management
@@ -703,6 +696,15 @@ const ClusterManagement = () => {
                       Delete Selected
                     </Button>
                   </Box>
+                  <ClusterTabs
+                    cluster={cluster}
+                    nodes={cluster.nodes}
+                    nodesMetrics={nodeMetrics}
+                    autoRefresh={autoRefresh}
+                    refreshInterval={refreshInterval / 1000}
+                    onToggleAutoRefresh={() => setAutoRefresh((prev) => !prev)}
+                    onChangeInterval={(interval) => setRefreshInterval(interval * 1000)}
+                  />
                   {editingCluster === cluster.id ? (
                     <Box sx={{ mt: 2 }}>
                       <TextField

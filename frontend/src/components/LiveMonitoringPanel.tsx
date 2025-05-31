@@ -45,6 +45,7 @@ interface LiveMonitoringPanelProps {
   refreshInterval: number;
   onToggleAutoRefresh: () => void;
   onChangeInterval: (interval: number) => void;
+  interval?: string;
 }
 
 const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
@@ -53,6 +54,7 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
   refreshInterval,
   onToggleAutoRefresh,
   onChangeInterval,
+  interval = '1h',
 }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -122,6 +124,9 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
 
   return (
     <Box sx={{ mb: 4, p: 2, background: '#fff', borderRadius: 2, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }}>
+      <Typography variant="subtitle2" sx={{ mb: 2, textAlign: 'right', color: 'var(--text-secondary)' }}>
+        Interval: {interval}
+      </Typography>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2, gap: 1 }}>
         <Tooltip title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}>
           <IconButton onClick={onToggleAutoRefresh} color={autoRefresh ? 'primary' : 'default'}>
