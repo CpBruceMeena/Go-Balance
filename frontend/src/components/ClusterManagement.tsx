@@ -45,6 +45,8 @@ import LiveMonitoringPanel from './LiveMonitoringPanel';
 import { useNavigate } from 'react-router-dom';
 import styles from './ClusterManagement.module.css';
 import ClusterTabs from './ClusterTabs';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
@@ -90,6 +92,7 @@ const ClusterManagement = () => {
     healthCheckFrequency: 30 // Default to 30 seconds
   });
   const [newNodeUrl, setNewNodeUrl] = useState('');
+  const [newNodeWeight, setNewNodeWeight] = useState(1);
   const [error, setError] = useState<string>('');
   const [editingCluster, setEditingCluster] = useState<string | null>(null);
   const [editHealthCheckEndpoint, setEditHealthCheckEndpoint] = useState('');
@@ -104,6 +107,8 @@ const ClusterManagement = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
   const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
+  const [checkingNodeId, setCheckingNodeId] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
 
   const fetchClusters = useCallback(async () => {
@@ -158,10 +163,9 @@ const ClusterManagement = () => {
       });
       await fetchClusters();
       setOpenClusterDialog(false);
-      setSuccess('Cluster created successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      setSnackbar({ open: true, message: 'Cluster created successfully!', severity: 'success' });
     } catch (err) {
-      setError('Failed to create cluster');
+      setSnackbar({ open: true, message: 'Failed to create cluster', severity: 'error' });
     } finally {
       setIsCreating(false);
     }
@@ -171,14 +175,14 @@ const ClusterManagement = () => {
     setIsAddingNode(true);
     setError('');
     try {
-      await clusterService.addNode(clusterId, newNodeUrl);
+      await clusterService.addNode(clusterId, newNodeUrl, newNodeWeight);
       setNewNodeUrl('');
+      setNewNodeWeight(1);
       await fetchClusters();
       setOpenNodeDialog(false);
-      setSuccess('Node added successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      setSnackbar({ open: true, message: 'Node added successfully!', severity: 'success' });
     } catch (err) {
-      setError('Failed to add node');
+      setSnackbar({ open: true, message: 'Failed to add node', severity: 'error' });
     } finally {
       setIsAddingNode(false);
     }
@@ -190,7 +194,7 @@ const ClusterManagement = () => {
       fetchClusters();
       setError('');
     } catch (err) {
-      setError('Failed to delete cluster');
+      setSnackbar({ open: true, message: 'Failed to delete cluster', severity: 'error' });
     }
   };
 
@@ -204,12 +208,13 @@ const ClusterManagement = () => {
       ));
       setError('');
     } catch (err) {
-      setError('Failed to delete node');
+      setSnackbar({ open: true, message: 'Failed to delete node', severity: 'error' });
       console.error('Error deleting node:', err);
     }
   };
 
   const handleCheckHealth = async (clusterId: string, nodeId: string) => {
+    setCheckingNodeId(nodeId);
     try {
       const updatedNode = await clusterService.checkNodeHealth(clusterId, nodeId);
       setClusters(clusters.map(cluster =>
@@ -223,9 +228,12 @@ const ClusterManagement = () => {
           : cluster
       ));
       setError('');
+      setSnackbar({ open: true, message: 'Health check complete', severity: 'success' });
     } catch (err) {
-      setError('Failed to check node health');
+      setSnackbar({ open: true, message: 'Failed to check node health', severity: 'error' });
       console.error('Error checking node health:', err);
+    } finally {
+      setCheckingNodeId(null);
     }
   };
 
@@ -250,11 +258,9 @@ const ClusterManagement = () => {
         cluster.id === clusterId ? updatedCluster : cluster
       ));
       setEditingCluster(null);
-      setSuccess('Cluster updated successfully!');
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000);
+      setSnackbar({ open: true, message: 'Cluster updated successfully!', severity: 'success' });
     } catch (err) {
-      setError('Failed to update cluster');
+      setSnackbar({ open: true, message: 'Failed to update cluster', severity: 'error' });
     }
   };
 
@@ -409,7 +415,17 @@ const ClusterManagement = () => {
                 <MenuItem value="round-robin">Round Robin</MenuItem>
                 <MenuItem value="least-connections">Least Connections</MenuItem>
                 <MenuItem value="weighted-round-robin">Weighted Round Robin</MenuItem>
+                <MenuItem value="ip-hash">IP Hash</MenuItem>
+                <MenuItem value="least-response-time">Least Response Time</MenuItem>
               </TextField>
+              <Box sx={{ mt: 1, mb: 2, background: '#f9f6f2', borderRadius: 1, p: 1.5, fontSize: 14, color: 'var(--text-secondary)' }}>
+                <b>Algorithm Info:</b><br />
+                <b>Round Robin:</b> Evenly distributes requests.<br />
+                <b>Weighted Round Robin:</b> Distributes based on node weights.<br />
+                <b>Least Connections:</b> Chooses node with fewest active connections.<br />
+                <b>IP Hash:</b> Routes based on client IP.<br />
+                <b>Least Response Time:</b> Chooses node with lowest response time.
+              </Box>
             </form>
           </DialogContent>
           <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
@@ -486,7 +502,15 @@ const ClusterManagement = () => {
         {clusters.map((cluster) => {
           const clusterHealth = getClusterHealthStatus(cluster);
           const clusterStatusLabel = clusterHealth === 'healthy' ? 'Healthy' : clusterHealth === 'warning' ? 'Warning' : 'Unhealthy';
-          const clusterStatusIcon = clusterHealth === 'healthy' ? <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18, mr: 1 }} /> : clusterHealth === 'warning' ? <WarningIcon sx={{ color: '#ffb300', fontSize: 18, mr: 1 }} /> : <ErrorIcon sx={{ color: '#f44336', fontSize: 18, mr: 1 }} />;
+          const clusterStatusIcon = clusterHealth === 'healthy' ? (
+            <Tooltip title="All nodes healthy"><CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18, mr: 1 }} aria-label="Healthy" /></Tooltip>
+          ) : clusterHealth === 'warning' ? (
+            <Tooltip title="Some nodes unhealthy"><WarningIcon sx={{ color: '#ffb300', fontSize: 18, mr: 1 }} aria-label="Warning" /></Tooltip>
+          ) : clusterHealth === 'unhealthy' ? (
+            <Tooltip title="All nodes unhealthy"><ErrorIcon sx={{ color: '#f44336', fontSize: 18, mr: 1 }} aria-label="Unhealthy" /></Tooltip>
+          ) : (
+            <Tooltip title="Unknown cluster health"><ErrorIcon sx={{ color: '#bdbdbd', fontSize: 18, mr: 1 }} aria-label="Unknown" /></Tooltip>
+          );
 
           return (
             <Grid item xs={12} sm={12} md={12} key={cluster.id}>
@@ -526,7 +550,7 @@ const ClusterManagement = () => {
                       </Box>
                     </Box>
                     <Tooltip title="Delete Cluster">
-                      <IconButton onClick={() => handleDeleteCluster(cluster.id)} color="error">
+                      <IconButton onClick={() => handleDeleteCluster(cluster.id)} color="error" aria-label="Delete Cluster">
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
@@ -626,36 +650,41 @@ const ClusterManagement = () => {
                                 <span style={{ color: textTertiary, fontSize: 13 }}>{new Date(node.lastChecked).toLocaleString()}</span>
                               </td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>
-                                <Chip
-                                  label={node.healthStatus}
-                                  sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
-                                  size="small"
-                                  style={{ textTransform: 'capitalize' }}
-                                />
+                                <Tooltip title={node.healthStatus.charAt(0).toUpperCase() + node.healthStatus.slice(1)}>
+                        <Chip
+                          label={node.healthStatus}
+                          sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
+                          size="small"
+                          style={{ textTransform: 'capitalize' }}
+                                    aria-label={node.healthStatus}
+                                  />
+                                </Tooltip>
                               </td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.connections === 'number' ? node.connections : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.errorRate === 'number' ? `${node.errorRate.toFixed(2)}%` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle', textAlign: 'center' }}>
                                 <Box className={styles['action-group']}>
-                                  <Tooltip title="Check Health">
-                                    <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon}>
-                                      <RefreshIcon />
-                                    </IconButton>
+                        <Tooltip title="Check Health">
+                                    <span>
+                                      <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon} disabled={checkingNodeId === node.id} aria-label="Check Health">
+                                        {checkingNodeId === node.id ? <CircularProgress size={20} /> : <RefreshIcon />}
+                                      </IconButton>
+                                    </span>
                                   </Tooltip>
                                   <Tooltip title="Drain Node">
-                                    <IconButton edge="end" onClick={() => handleDrainNode(cluster.id, node.id)} className={styles['secondary-action']}>
+                                    <IconButton edge="end" onClick={() => handleDrainNode(cluster.id, node.id)} className={styles['secondary-action']} aria-label="Drain Node">
                                       <HealthAndSafetyIcon />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Remove Node">
-                                    <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon}>
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  </Tooltip>
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Remove Node">
+                                    <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon} aria-label="Remove Node">
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                                 </Box>
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <IconButton size="small" onClick={() => handleExpandRow(node.id)}>
+                                <IconButton size="small" onClick={() => handleExpandRow(node.id)} aria-label="Expand Row">
                                   <ExpandMoreIcon style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                 </IconButton>
                               </td>
@@ -677,7 +706,7 @@ const ClusterManagement = () => {
                                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                   <Box sx={{ p: 2, background: '#f9f6f2', borderBottom: `1px solid ${colors.timberwolf}` }}>
                                     <Typography variant="body2">Detailed node metrics coming soon...</Typography>
-                                  </Box>
+                  </Box>
                                 </Collapse>
                               </td>
                             </tr>
@@ -687,14 +716,10 @@ const ClusterManagement = () => {
                     </table>
                   </Box>
                   <Box className={styles['action-group']} sx={{ mb: 2, justifyContent: 'flex-end' }}>
-                    <Button className={styles['primary-action']} onClick={() => { setSelectedCluster(cluster.id); setOpenNodeDialog(true); }} startIcon={<AddIcon />}>Add Node</Button>
-                    <Button className={styles['secondary-action']} onClick={() => handleTestAllNodes(cluster.id)} startIcon={<RefreshIcon />}>Test All Nodes</Button>
-                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} onClick={() => handleBulkDrain(cluster.id)}>
-                      Drain Selected
-                    </Button>
-                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} color="error" onClick={() => handleBulkDelete(cluster.id)}>
-                      Delete Selected
-                    </Button>
+                    <Button className={styles['primary-action']} onClick={() => { setSelectedCluster(cluster.id); setOpenNodeDialog(true); }} startIcon={<AddIcon />} aria-label="Add Node">Add Node</Button>
+                    <Button className={styles['secondary-action']} onClick={() => handleTestAllNodes(cluster.id)} startIcon={<RefreshIcon />} aria-label="Test All Nodes">Test All Nodes</Button>
+                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} onClick={() => handleBulkDrain(cluster.id)} aria-label="Drain Selected">Drain Selected</Button>
+                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} color="error" onClick={() => handleBulkDelete(cluster.id)} aria-label="Delete Selected">Delete Selected</Button>
                   </Box>
                   <ClusterTabs
                     cluster={cluster}
@@ -778,6 +803,7 @@ const ClusterManagement = () => {
               top: 5,
               right: 5
             }}
+            aria-label="Close Dialog"
           >
             <CloseIcon />
           </IconButton>
@@ -838,7 +864,17 @@ const ClusterManagement = () => {
               <MenuItem value="round-robin">Round Robin</MenuItem>
               <MenuItem value="least-connections">Least Connections</MenuItem>
               <MenuItem value="weighted-round-robin">Weighted Round Robin</MenuItem>
+              <MenuItem value="ip-hash">IP Hash</MenuItem>
+              <MenuItem value="least-response-time">Least Response Time</MenuItem>
             </TextField>
+            <Box sx={{ mt: 1, mb: 2, background: '#f9f6f2', borderRadius: 1, p: 1.5, fontSize: 14, color: 'var(--text-secondary)' }}>
+              <b>Algorithm Info:</b><br />
+              <b>Round Robin:</b> Evenly distributes requests.<br />
+              <b>Weighted Round Robin:</b> Distributes based on node weights.<br />
+              <b>Least Connections:</b> Chooses node with fewest active connections.<br />
+              <b>IP Hash:</b> Routes based on client IP.<br />
+              <b>Least Response Time:</b> Chooses node with lowest response time.
+            </Box>
           </form>
           {error && (
             <Typography color="error" sx={{ mt: 2 }}>
@@ -919,9 +955,18 @@ const ClusterManagement = () => {
             onChange={(e) => setNewNodeUrl(e.target.value)}
             placeholder="http://example.com:8080"
             helperText="Enter the node's base URL (e.g., http://example.com:8080)"
-            inputProps={{
-              maxLength: 200
-            }}
+            inputProps={{ maxLength: 200 }}
+            disabled={isAddingNode}
+          />
+          <TextField
+            margin="dense"
+            label="Node Weight"
+            type="number"
+            fullWidth
+            value={newNodeWeight}
+            onChange={e => setNewNodeWeight(Math.max(1, Math.min(100, Number(e.target.value))))}
+            inputProps={{ min: 1, max: 100 }}
+            helperText="Set the node's weight (1-100, for weighted load balancing)"
             disabled={isAddingNode}
           />
           {error && (
@@ -953,6 +998,12 @@ const ClusterManagement = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert elevation={6} variant="filled" onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </MuiAlert>
+      </Snackbar>
     </Box>
   );
 };

@@ -67,9 +67,10 @@ export const clusterService = {
     await axios.delete(`${API_BASE_URL}/clusters/${clusterId}`);
   },
 
-  async addNode(clusterId: string, url: string): Promise<Node> {
+  async addNode(clusterId: string, url: string, weight: number): Promise<Node> {
     const response = await axios.post<{ node: Node }>(`${API_BASE_URL}/clusters/${clusterId}/nodes`, {
       url,
+      weight,
     });
     return response.data.node;
   },

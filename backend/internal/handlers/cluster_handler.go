@@ -207,7 +207,8 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 	clusterID := vars["clusterId"]
 
 	var request struct {
-		URL string `json:"url"`
+		URL    string `json:"url"`
+		Weight int    `json:"weight"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -232,12 +233,16 @@ func (cm *ClusterManager) AddNode(w http.ResponseWriter, r *http.Request) {
 		IsActive:          true,
 		LastChecked:       time.Now(),
 		CreatedAt:         time.Now(),
-		Weight:            1,
+		Weight:            request.Weight,
 		ResponseTime:      0,
 		TotalRequests:     0,
 		RequestsPerSec:    0,
 		LastRequest:       time.Time{},
 		RequestTimestamps: []time.Time{},
+	}
+
+	if node.Weight < 1 {
+		node.Weight = 1
 	}
 
 	// Perform immediate health check
