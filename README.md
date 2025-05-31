@@ -13,9 +13,12 @@ A modern, scalable load balancer built in Go with a React.js web interface. This
 
 ## Features
 
-- Multiple load balancing algorithms (Round Robin, Least Connections, Weighted Round Robin, IP Hash)
+- Multiple load balancing algorithms (Round Robin, Least Connections, Weighted Round Robin, IP Hash, Least Response Time)
 - Cluster management with isolated configurations
 - Node-level and cluster-level live monitoring with real-time charts
+- **Interval-based trend monitoring for requests/sec, response time, error rate, and bandwidth**
+- **Alert configuration for CPU, memory, response time, and error rate thresholds**
+- **SSL/TLS certificate management per cluster**
 - Modular routing for clusters and nodes
 - Dedicated Node Details page for per-node metrics and monitoring
 - Rate limiting with customizable rules
@@ -182,3 +185,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - The cluster management widget is now full screen, making it easier to view and manage clusters and nodes.
 - Node lists are displayed in a table format, ensuring all node data is visible in a single row without horizontal scrolling.
 - Improved padding and layout for a more modern, user-friendly experience.
+- **Monitoring dashboard now supports interval-based trends for key metrics.**
+- **Alert configuration UI for setting thresholds on CPU, memory, response time, and error rate.**
+- **SSL/TLS tab for uploading and managing certificates per cluster.**
+- **Advanced load balancing algorithm selection with info tooltips.**
