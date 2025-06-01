@@ -80,6 +80,12 @@ const copyIcon = { color: textSecondary, minWidth: 40, minHeight: 40 };
 // 10. Navigation header
 const navHeader = { background: '#fff', color: textPrimary, borderBottom: '1px solid var(--timberwolf)' };
 
+const ENV_OPTIONS = [
+  { label: 'Development', value: 'dev', color: '#90caf9' },
+  { label: 'Staging', value: 'staging', color: '#ffe082' },
+  { label: 'Production', value: 'prod', color: '#ff8a65' },
+];
+
 const ClusterManagement = () => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [openClusterDialog, setOpenClusterDialog] = useState(false);
@@ -89,7 +95,8 @@ const ClusterManagement = () => {
     name: '',
     algorithm: 'round-robin',
     healthCheckEndpoint: '',
-    healthCheckFrequency: 30 // Default to 30 seconds
+    healthCheckFrequency: 30, // Default to 30 seconds
+    environment: 'dev',
   });
   const [newNodeUrl, setNewNodeUrl] = useState('');
   const [newNodeWeight, setNewNodeWeight] = useState(1);
@@ -109,6 +116,7 @@ const ClusterManagement = () => {
   const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
   const [checkingNodeId, setCheckingNodeId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+  const [editEnvironment, setEditEnvironment] = useState('dev');
   const navigate = useNavigate();
 
   const fetchClusters = useCallback(async () => {
@@ -159,7 +167,8 @@ const ClusterManagement = () => {
         name: '',
         algorithm: 'round-robin',
         healthCheckEndpoint: '',
-        healthCheckFrequency: 30
+        healthCheckFrequency: 30,
+        environment: 'dev',
       });
       await fetchClusters();
       setOpenClusterDialog(false);
@@ -246,13 +255,15 @@ const ClusterManagement = () => {
     setEditingCluster(cluster.id);
     setEditHealthCheckEndpoint(cluster.healthCheckEndpoint);
     setEditHealthCheckFrequency(cluster.healthCheckFrequency);
+    setEditEnvironment(cluster.environment || 'dev');
   };
 
   const handleSaveCluster = async (clusterId: string) => {
     try {
       const updatedCluster = await clusterService.updateCluster(clusterId, {
         healthCheckEndpoint: editHealthCheckEndpoint,
-        healthCheckFrequency: editHealthCheckFrequency
+        healthCheckFrequency: editHealthCheckFrequency,
+        environment: editEnvironment,
       });
       setClusters(clusters.map(cluster =>
         cluster.id === clusterId ? updatedCluster : cluster
@@ -418,6 +429,20 @@ const ClusterManagement = () => {
                 <MenuItem value="ip-hash">IP Hash</MenuItem>
                 <MenuItem value="least-response-time">Least Response Time</MenuItem>
               </TextField>
+              <TextField
+                select
+                margin="normal"
+                label="Environment"
+                fullWidth
+                value={newCluster.environment}
+                onChange={e => setNewCluster({ ...newCluster, environment: e.target.value })}
+                required
+                helperText="Select the environment for this cluster"
+              >
+                {ENV_OPTIONS.map(opt => (
+                  <MenuItem value={opt.value} key={opt.value}>{opt.label}</MenuItem>
+                ))}
+              </TextField>
               <Box sx={{ mt: 1, mb: 2, background: '#f9f6f2', borderRadius: 1, p: 1.5, fontSize: 14, color: 'var(--text-secondary)' }}>
                 <b>Algorithm Info:</b><br />
                 <b>Round Robin:</b> Evenly distributes requests.<br />
@@ -554,6 +579,13 @@ const ClusterManagement = () => {
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Chip
+                      label={ENV_OPTIONS.find(opt => opt.value === cluster.environment)?.label || cluster.environment}
+                      sx={{ background: ENV_OPTIONS.find(opt => opt.value === cluster.environment)?.color || '#e0e0e0', color: '#222', fontWeight: 700 }}
+                      size="small"
+                    />
                   </Box>
                   <Typography variant="body2" sx={{ color: textPrimary, mb: 1 }}>
                     <b>Algorithm:</b> {cluster.algorithm}
@@ -752,6 +784,21 @@ const ClusterManagement = () => {
                         inputProps={{ min: 1 }}
                         sx={{ mb: 1 }}
                       />
+                      <TextField
+                        select
+                        margin="dense"
+                        label="Environment"
+                        fullWidth
+                        value={editEnvironment}
+                        onChange={e => setEditEnvironment(e.target.value)}
+                        required
+                        helperText="Select the environment for this cluster"
+                        sx={{ mb: 1 }}
+                      >
+                        {ENV_OPTIONS.map(opt => (
+                          <MenuItem value={opt.value} key={opt.value}>{opt.label}</MenuItem>
+                        ))}
+                      </TextField>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <Tooltip title="Save">
                           <IconButton onClick={() => handleSaveCluster(cluster.id)} sx={refreshIcon}>
@@ -866,6 +913,20 @@ const ClusterManagement = () => {
               <MenuItem value="weighted-round-robin">Weighted Round Robin</MenuItem>
               <MenuItem value="ip-hash">IP Hash</MenuItem>
               <MenuItem value="least-response-time">Least Response Time</MenuItem>
+            </TextField>
+            <TextField
+              select
+              margin="normal"
+              label="Environment"
+              fullWidth
+              value={newCluster.environment}
+              onChange={e => setNewCluster({ ...newCluster, environment: e.target.value })}
+              required
+              helperText="Select the environment for this cluster"
+            >
+              {ENV_OPTIONS.map(opt => (
+                <MenuItem value={opt.value} key={opt.value}>{opt.label}</MenuItem>
+              ))}
             </TextField>
             <Box sx={{ mt: 1, mb: 2, background: '#f9f6f2', borderRadius: 1, p: 1.5, fontSize: 14, color: 'var(--text-secondary)' }}>
               <b>Algorithm Info:</b><br />

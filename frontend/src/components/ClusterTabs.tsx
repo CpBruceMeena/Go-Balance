@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, Tab, Box, Typography, ToggleButton, ToggleButtonGroup, IconButton, Tooltip, Button, Stack, useMediaQuery, useTheme, Divider, TextField, InputAdornment, Switch, FormControlLabel } from '@mui/material';
+import { Tabs, Tab, Box, Typography, ToggleButton, ToggleButtonGroup, IconButton, Tooltip, Button, Stack, useMediaQuery, useTheme, Divider, TextField, InputAdornment, Switch, FormControlLabel, Grid } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -10,6 +10,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import type { Cluster, Node } from '../services/clusterService';
 import LiveMonitoringPanel from './LiveMonitoringPanel';
 import { MenuItem } from '@mui/material';
+import { Line } from 'react-chartjs-2';
 
 const INTERVAL_OPTIONS = [
   { label: '5m', value: '5m' },
@@ -69,6 +70,25 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
   const [apiToken, setApiToken] = React.useState('');
   const [tokenCopied, setTokenCopied] = React.useState(false);
 
+  // Analytics state (mocked for now)
+  const [analyticsRange, setAnalyticsRange] = React.useState<'7d' | '30d'>('7d');
+  const analyticsData = {
+    '7d': {
+      labels: Array.from({ length: 7 }, (_, i) => `${7 - i}d ago`).reverse(),
+      requests: [1000, 1200, 1100, 1300, 1250, 1400, 1350],
+      errors: [10, 12, 8, 15, 9, 11, 10],
+      respTime: [120, 115, 118, 122, 117, 119, 116],
+      bandwidth: [1.2, 1.3, 1.1, 1.4, 1.5, 1.6, 1.7],
+    },
+    '30d': {
+      labels: Array.from({ length: 30 }, (_, i) => `${30 - i}d ago`).reverse(),
+      requests: Array.from({ length: 30 }, () => Math.floor(1000 + Math.random() * 500)),
+      errors: Array.from({ length: 30 }, () => Math.floor(5 + Math.random() * 10)),
+      respTime: Array.from({ length: 30 }, () => Math.floor(110 + Math.random() * 20)),
+      bandwidth: Array.from({ length: 30 }, () => 1 + Math.random()),
+    },
+  };
+
   // Handler for edit cluster (placeholder, can be replaced with actual logic)
   const handleEditCluster = () => {
     // You can trigger a dialog or callback here
@@ -121,6 +141,33 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
     setTimeout(() => setTokenCopied(false), 1500);
   };
 
+  const exportAnalytics = (type: 'csv' | 'json') => {
+    const data = analyticsData[analyticsRange];
+    if (type === 'json') {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-${analyticsRange}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // CSV export
+      const rows = [
+        ['Date', 'Requests', 'Errors', 'Avg Response Time', 'Bandwidth'],
+        ...data.labels.map((label, i) => [label, data.requests[i], data.errors[i], data.respTime[i], data.bandwidth[i]]),
+      ];
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-${analyticsRange}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <Box sx={{ mt: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -131,6 +178,7 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
           <Tab label="SSL/TLS" />
           <Tab label="Security" />
           <Tab label="API & Automation" />
+          <Tab label="Analytics" />
         </Tabs>
         <Button
           variant="outlined"
@@ -538,6 +586,86 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
               {`resource "go_balance_cluster" "example" {
                 name = "my-cluster"
               }`}
+            </Box>
+          </Box>
+        )}
+        {tab === 6 && (
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Analytics & Reporting</Typography>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              <Button variant={analyticsRange === '7d' ? 'contained' : 'outlined'} onClick={() => setAnalyticsRange('7d')}>7 Days</Button>
+              <Button variant={analyticsRange === '30d' ? 'contained' : 'outlined'} onClick={() => setAnalyticsRange('30d')}>30 Days</Button>
+              <Button variant="outlined" onClick={() => exportAnalytics('csv')}>Export CSV</Button>
+              <Button variant="outlined" onClick={() => exportAnalytics('json')}>Export JSON</Button>
+            </Stack>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6} lg={3}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Requests</Typography>
+                <Line data={{
+                  labels: analyticsData[analyticsRange].labels,
+                  datasets: [{
+                    label: 'Requests',
+                    data: analyticsData[analyticsRange].requests,
+                    borderColor: '#63b3ed',
+                    backgroundColor: 'rgba(99,179,237,0.1)',
+                    tension: 0.3,
+                    fill: true,
+                  }],
+                }} />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Errors</Typography>
+                <Line data={{
+                  labels: analyticsData[analyticsRange].labels,
+                  datasets: [{
+                    label: 'Errors',
+                    data: analyticsData[analyticsRange].errors,
+                    borderColor: '#f56565',
+                    backgroundColor: 'rgba(245,101,101,0.1)',
+                    tension: 0.3,
+                    fill: true,
+                  }],
+                }} />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Avg Response Time</Typography>
+                <Line data={{
+                  labels: analyticsData[analyticsRange].labels,
+                  datasets: [{
+                    label: 'Avg Response Time (ms)',
+                    data: analyticsData[analyticsRange].respTime,
+                    borderColor: '#f6ad55',
+                    backgroundColor: 'rgba(246,173,85,0.1)',
+                    tension: 0.3,
+                    fill: true,
+                  }],
+                }} />
+              </Grid>
+              <Grid item xs={12} md={6} lg={3}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Bandwidth</Typography>
+                <Line data={{
+                  labels: analyticsData[analyticsRange].labels,
+                  datasets: [{
+                    label: 'Bandwidth (MBps)',
+                    data: analyticsData[analyticsRange].bandwidth,
+                    borderColor: '#805ad5',
+                    backgroundColor: 'rgba(128,90,213,0.1)',
+                    tension: 0.3,
+                    fill: true,
+                  }],
+                }} />
+              </Grid>
+            </Grid>
+            <Box sx={{ mt: 4, p: 2, background: '#f9f6f2', borderRadius: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Summary Statistics</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={3}><b>Total Requests:</b> {analyticsData[analyticsRange].requests.reduce((a, b) => a + b, 0)}</Grid>
+                <Grid item xs={12} md={3}><b>Total Errors:</b> {analyticsData[analyticsRange].errors.reduce((a, b) => a + b, 0)}</Grid>
+                <Grid item xs={12} md={3}><b>Avg Response Time:</b> {Math.round(analyticsData[analyticsRange].respTime.reduce((a, b) => a + b, 0) / analyticsData[analyticsRange].respTime.length)} ms</Grid>
+                <Grid item xs={12} md={3}><b>Avg Bandwidth:</b> {(
+                  analyticsData[analyticsRange].bandwidth.reduce((a, b) => a + b, 0) / analyticsData[analyticsRange].bandwidth.length
+                ).toFixed(2)} MBps</Grid>
+              </Grid>
             </Box>
           </Box>
         )}

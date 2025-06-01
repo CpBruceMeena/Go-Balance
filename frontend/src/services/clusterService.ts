@@ -31,6 +31,7 @@ export interface Cluster {
   totalRequests?: number;
   requestsPerSec?: number;
   lastRequest?: string;
+  environment?: string;
 }
 
 export interface CreateClusterRequest {
@@ -38,6 +39,7 @@ export interface CreateClusterRequest {
   algorithm: string;
   healthCheckEndpoint: string;
   healthCheckFrequency: number;
+  environment?: string;
 }
 
 export interface NodeMetric {
@@ -89,7 +91,7 @@ export const clusterService = {
     return response.data;
   },
 
-  async updateCluster(clusterId: string, data: { healthCheckEndpoint: string; healthCheckFrequency: number }): Promise<Cluster> {
+  async updateCluster(clusterId: string, data: { healthCheckEndpoint: string; healthCheckFrequency: number; environment?: string }): Promise<Cluster> {
     const response = await axios.put<Cluster>(`${API_BASE_URL}/clusters/${clusterId}`, data);
     return response.data;
   },
