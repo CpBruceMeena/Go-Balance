@@ -1,13 +1,15 @@
 import React from 'react';
-import { Tabs, Tab, Box, Typography, ToggleButton, ToggleButtonGroup, IconButton, Tooltip, Button, Stack, useMediaQuery, useTheme, Divider, TextField, InputAdornment } from '@mui/material';
+import { Tabs, Tab, Box, Typography, ToggleButton, ToggleButtonGroup, IconButton, Tooltip, Button, Stack, useMediaQuery, useTheme, Divider, TextField, InputAdornment, Switch, FormControlLabel } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import type { Cluster, Node } from '../services/clusterService';
 import LiveMonitoringPanel from './LiveMonitoringPanel';
+import { MenuItem } from '@mui/material';
 
 const INTERVAL_OPTIONS = [
   { label: '5m', value: '5m' },
@@ -52,6 +54,21 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
   const [certMessage, setCertMessage] = React.useState('No certificate uploaded.');
   const [uploading, setUploading] = React.useState(false);
 
+  // Security state (mocked for now)
+  const [rateLimit, setRateLimit] = React.useState({ rps: 100, rpm: 5000, rph: 100000 });
+  const [ipWhitelist, setIpWhitelist] = React.useState('');
+  const [ipBlacklist, setIpBlacklist] = React.useState('');
+  const [authEnabled, setAuthEnabled] = React.useState(false);
+  const [authType, setAuthType] = React.useState<'basic' | 'oauth'>('basic');
+  const [authUser, setAuthUser] = React.useState('');
+  const [authPass, setAuthPass] = React.useState('');
+  const [savingSecurity, setSavingSecurity] = React.useState(false);
+  const [securitySaved, setSecuritySaved] = React.useState(false);
+
+  // API & Automation state (mocked for now)
+  const [apiToken, setApiToken] = React.useState('');
+  const [tokenCopied, setTokenCopied] = React.useState(false);
+
   // Handler for edit cluster (placeholder, can be replaced with actual logic)
   const handleEditCluster = () => {
     // You can trigger a dialog or callback here
@@ -85,6 +102,25 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
     setCertMessage('No certificate uploaded.');
   };
 
+  const handleSaveSecurity = () => {
+    setSavingSecurity(true);
+    setTimeout(() => {
+      setSavingSecurity(false);
+      setSecuritySaved(true);
+      setTimeout(() => setSecuritySaved(false), 2000);
+    }, 1000);
+  };
+
+  const handleGenerateToken = () => {
+    setApiToken('mocked-token-' + Math.random().toString(36).slice(2));
+    setTokenCopied(false);
+  };
+  const handleCopyToken = () => {
+    navigator.clipboard.writeText(apiToken);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 1500);
+  };
+
   return (
     <Box sx={{ mt: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -93,6 +129,8 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
           <Tab label="Monitoring" />
           <Tab label="Alerts" />
           <Tab label="SSL/TLS" />
+          <Tab label="Security" />
+          <Tab label="API & Automation" />
         </Tabs>
         <Button
           variant="outlined"
@@ -331,6 +369,176 @@ const ClusterTabs: React.FC<ClusterTabsProps> = ({ cluster, nodes, nodesMetrics,
                 </Typography>
               </Box>
             </Stack>
+          </Box>
+        )}
+        {tab === 4 && (
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Security Settings</Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'var(--text-secondary)' }}>
+              Configure rate limiting, IP access control, and authentication for this cluster.
+            </Typography>
+            <Stack spacing={3} direction="column" sx={{ maxWidth: 600 }}>
+              {/* Rate Limiting */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Rate Limiting</Typography>
+                <Stack direction="row" spacing={2}>
+                  <TextField
+                    label="Requests/sec"
+                    type="number"
+                    value={rateLimit.rps}
+                    onChange={e => setRateLimit({ ...rateLimit, rps: Number(e.target.value) })}
+                    inputProps={{ min: 1 }}
+                  />
+                  <TextField
+                    label="Requests/min"
+                    type="number"
+                    value={rateLimit.rpm}
+                    onChange={e => setRateLimit({ ...rateLimit, rpm: Number(e.target.value) })}
+                    inputProps={{ min: 1 }}
+                  />
+                  <TextField
+                    label="Requests/hour"
+                    type="number"
+                    value={rateLimit.rph}
+                    onChange={e => setRateLimit({ ...rateLimit, rph: Number(e.target.value) })}
+                    inputProps={{ min: 1 }}
+                  />
+                </Stack>
+              </Box>
+              {/* IP Whitelist/Blacklist */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>IP Access Control</Typography>
+                <TextField
+                  label="IP Whitelist (comma-separated)"
+                  fullWidth
+                  value={ipWhitelist}
+                  onChange={e => setIpWhitelist(e.target.value)}
+                  placeholder="192.168.1.1, 10.0.0.0/8"
+                  sx={{ mb: 1 }}
+                />
+                <TextField
+                  label="IP Blacklist (comma-separated)"
+                  fullWidth
+                  value={ipBlacklist}
+                  onChange={e => setIpBlacklist(e.target.value)}
+                  placeholder="203.0.113.0, 172.16.0.0/12"
+                />
+              </Box>
+              {/* Authentication */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Authentication</Typography>
+                <FormControlLabel
+                  control={<Switch checked={authEnabled} onChange={e => setAuthEnabled(e.target.checked)} />}
+                  label="Enable Authentication"
+                  sx={{ mb: 1 }}
+                />
+                {authEnabled && (
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <TextField
+                      select
+                      label="Auth Type"
+                      value={authType}
+                      onChange={e => setAuthType(e.target.value as 'basic' | 'oauth')}
+                      sx={{ minWidth: 120 }}
+                    >
+                      <MenuItem value="basic">Basic Auth</MenuItem>
+                      <MenuItem value="oauth">OAuth</MenuItem>
+                    </TextField>
+                    {authType === 'basic' && (
+                      <>
+                        <TextField
+                          label="Username"
+                          value={authUser}
+                          onChange={e => setAuthUser(e.target.value)}
+                        />
+                        <TextField
+                          label="Password"
+                          type="password"
+                          value={authPass}
+                          onChange={e => setAuthPass(e.target.value)}
+                        />
+                      </>
+                    )}
+                    {authType === 'oauth' && (
+                      <TextField
+                        label="OAuth Config (JSON)"
+                        value={authUser}
+                        onChange={e => setAuthUser(e.target.value)}
+                        placeholder="{ clientId, clientSecret, ... }"
+                        fullWidth
+                      />
+                    )}
+                  </Stack>
+                )}
+              </Box>
+              <Button
+                variant="contained"
+                sx={{ mt: 2, fontWeight: 600, borderRadius: 2 }}
+                onClick={handleSaveSecurity}
+                disabled={savingSecurity}
+              >
+                {savingSecurity ? 'Saving...' : 'Save Security Settings'}
+              </Button>
+              {securitySaved && (
+                <Typography color="success.main" sx={{ mt: 2 }}>
+                  Security settings saved!
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        )}
+        {tab === 5 && (
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>API & Automation</Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'var(--text-secondary)' }}>
+              Use the REST API or CLI to automate cluster and node management. Example endpoints and requests are shown below.
+            </Typography>
+            <Box sx={{ mb: 3, p: 2, background: '#f9f6f2', borderRadius: 2 }}>
+              <Typography variant="subtitle2">API Token</Typography>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+                <TextField
+                  label="API Token"
+                  value={apiToken}
+                  InputProps={{
+                    endAdornment: (
+                      <IconButton onClick={handleCopyToken} disabled={!apiToken} aria-label="Copy token">
+                        <ContentCopyIcon />
+                      </IconButton>
+                    )
+                  }}
+                  sx={{ minWidth: 320 }}
+                  disabled
+                />
+                <Button variant="outlined" onClick={handleGenerateToken}>Generate Token</Button>
+                {tokenCopied && <Typography color="success.main">Copied!</Typography>}
+              </Stack>
+            </Box>
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Example API Endpoints</Typography>
+            <Box sx={{ fontFamily: 'monospace', fontSize: 15, background: '#f4f4f4', borderRadius: 1, p: 2, mb: 2 }}>
+              GET /api/clusters<br />
+              POST /api/clusters<br />
+              GET /api/clusters/:clusterId<br />
+              PUT /api/clusters/:clusterId<br />
+              DELETE /api/clusters/:clusterId<br />
+              POST /api/clusters/:clusterId/nodes<br />
+              DELETE /api/clusters/:clusterId/nodes/:nodeId<br />
+              GET /api/clusters/:clusterId/nodes/metrics<br />
+            </Box>
+            <Typography variant="subtitle2">Example curl Request</Typography>
+            <Box sx={{ fontFamily: 'monospace', fontSize: 15, background: '#f4f4f4', borderRadius: 1, p: 2, mb: 2 }}>
+              curl -H "Authorization: Bearer &lt;API_TOKEN&gt;" \
+              http://localhost:8080/api/clusters
+            </Box>
+            <Typography variant="subtitle2">CLI & Terraform</Typography>
+            <Box sx={{ fontFamily: 'monospace', fontSize: 15, background: '#f4f4f4', borderRadius: 1, p: 2 }}>
+              # CLI (coming soon)
+              go-balance-cli create-cluster --name my-cluster
+              <br /><br />
+              # Terraform (coming soon)
+              {`resource "go_balance_cluster" "example" {
+                name = "my-cluster"
+              }`}
+            </Box>
           </Box>
         )}
       </Box>
