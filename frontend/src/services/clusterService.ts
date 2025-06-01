@@ -52,6 +52,7 @@ export interface NodeMetric {
   requests: number;
   success: number;
   failure: number;
+  responseTime?: number;
 }
 
 export const clusterService = {

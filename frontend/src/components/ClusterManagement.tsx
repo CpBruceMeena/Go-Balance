@@ -37,16 +37,13 @@ import Checkbox from '@mui/material/Checkbox';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
 import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip as ChartTooltip, Legend } from 'chart.js';
-import { Pie, Bar, Line } from 'react-chartjs-2';
-import SettingsIcon from '@mui/icons-material/Settings';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import LiveMonitoringPanel from './LiveMonitoringPanel';
-import { useNavigate } from 'react-router-dom';
-import styles from './ClusterManagement.module.css';
 import ClusterTabs from './ClusterTabs';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
+import PauseCircleIcon from '@mui/icons-material/PauseCircle';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, ChartTooltip, Legend);
 
@@ -63,22 +60,14 @@ const textPrimary = 'var(--text-primary)';
 const textSecondary = 'var(--text-secondary)';
 const textTertiary = 'var(--text-tertiary)';
 // 5. Status indicators
-const healthyStatus = { background: 'var(--success-bg)', color: '#fff', padding: '4px 12px', borderRadius: 16 };
-const errorStatus = { background: 'var(--error-bg)', color: '#fff', padding: '4px 12px', borderRadius: 16 };
 // 6. Buttons
 const primaryButton = { background: 'var(--champagne-pink)', color: textPrimary, fontWeight: 600, borderRadius: 3, px: 5, py: 1.7, boxShadow: 'var(--shadow)', textTransform: 'none', fontSize: '1.1rem', '&:hover': { background: '#d1a97e' } };
 const secondaryButton = { background: 'var(--timberwolf)', color: textPrimary, '&:hover': { background: '#bfb8b0' } };
 // 7. Error messages
 const errorMessage = { color: 'var(--error-bg)', background: 'var(--error-light)', padding: 12, borderRadius: 8 };
-// 8. Input fields
-const inputField = { background: '#fff', border: '1px solid var(--timberwolf)', color: textPrimary };
-const inputFocus = { border: '2px solid var(--champagne-pink)' };
-// 9. Action icons
+// 8. Action icons
 const deleteIcon = { color: 'var(--error-bg)', minWidth: 40, minHeight: 40 };
 const refreshIcon = { color: textSecondary, minWidth: 40, minHeight: 40 };
-const copyIcon = { color: textSecondary, minWidth: 40, minHeight: 40 };
-// 10. Navigation header
-const navHeader = { background: '#fff', color: textPrimary, borderBottom: '1px solid var(--timberwolf)' };
 
 const ENV_OPTIONS = [
   { label: 'Development', value: 'dev', color: '#90caf9' },
@@ -104,20 +93,17 @@ const ClusterManagement = () => {
   const [editingCluster, setEditingCluster] = useState<string | null>(null);
   const [editHealthCheckEndpoint, setEditHealthCheckEndpoint] = useState('');
   const [editHealthCheckFrequency, setEditHealthCheckFrequency] = useState(0);
-  const [success, setSuccess] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
   const [isAddingNode, setIsAddingNode] = useState(false);
   const [selectedNodes, setSelectedNodes] = useState<{[key: string]: boolean}>({});
   const [expandedRows, setExpandedRows] = useState<{[key: string]: boolean}>({});
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
   const [monitoringClusterId, setMonitoringClusterId] = useState<string | null>(null);
   const [checkingNodeId, setCheckingNodeId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
   const [editEnvironment, setEditEnvironment] = useState('dev');
-  const navigate = useNavigate();
 
   const fetchClusters = useCallback(async () => {
     try {
@@ -322,6 +308,24 @@ const ClusterManagement = () => {
     alert(`Delete Selected Nodes: ${Object.keys(selectedNodes).filter(id => selectedNodes[id]).join(', ')}`);
   };
 
+  // Status badge rendering
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <Chip icon={<CheckCircleIcon sx={{ color: '#fff' }} />} label="Healthy" sx={{ background: '#4caf50', color: '#fff', fontWeight: 700 }} size="small" />;
+      case 'warning':
+        return <Chip icon={<WarningIcon sx={{ color: '#fff' }} />} label="Warning" sx={{ background: '#ffa726', color: '#fff', fontWeight: 700 }} size="small" />;
+      case 'unhealthy':
+        return <Chip icon={<ErrorIcon sx={{ color: '#fff' }} />} label="Unhealthy" sx={{ background: '#f44336', color: '#fff', fontWeight: 700 }} size="small" />;
+      case 'paused':
+        return <Chip icon={<PauseCircleIcon sx={{ color: '#fff' }} />} label="Paused" sx={{ background: '#90a4ae', color: '#fff', fontWeight: 700 }} size="small" />;
+      case 'checking':
+        return <Chip icon={<AutorenewIcon className="pulse" sx={{ color: '#1976d2' }} />} label="Checking" sx={{ background: '#1976d2', color: '#fff', fontWeight: 700, animation: 'pulse 1.2s infinite' }} size="small" />;
+      default:
+        return <Chip label={status} sx={{ background: '#e0e0e0', color: '#222', fontWeight: 700 }} size="small" />;
+    }
+  };
+
   if (clusters.length === 0) {
     return (
       <>
@@ -475,18 +479,13 @@ const ClusterManagement = () => {
   return (
     <Box sx={{ p: { xs: 1, sm: 3 }, background: mainBackground, minHeight: '100vh' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ color: textPrimary, fontWeight: 700 }}>
+        <Typography variant="h1" component="h1" sx={{ color: textPrimary, fontWeight: 700, mb: 4, fontSize: { xs: '2rem', sm: '2.5rem' } }}>
           Cluster Management
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Tooltip title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}>
             <IconButton onClick={() => setAutoRefresh((prev) => !prev)}>
               {autoRefresh ? <PauseIcon /> : <PlayArrowIcon />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Settings">
-            <IconButton onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon />
             </IconButton>
           </Tooltip>
         </Box>
@@ -498,45 +497,9 @@ const ClusterManagement = () => {
         </Typography>
       )}
 
-      {success && (
-        <Typography sx={{ color: healthyStatus.background, background: '#e6f4ea', padding: 1, borderRadius: 8, mb: 2 }}>
-          {success}
-        </Typography>
-      )}
-
-      {/* Settings Dialog */}
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-        <DialogTitle>Auto-Refresh Settings</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Refresh Interval (ms)"
-            type="number"
-            value={refreshInterval}
-            onChange={e => setRefreshInterval(Number(e.target.value))}
-            inputProps={{ min: 1000, step: 1000 }}
-            fullWidth
-            helperText="Set the auto-refresh interval in milliseconds (min 1000)"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSettingsOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
       <Grid container spacing={3}>
         {clusters.map((cluster) => {
           const clusterHealth = getClusterHealthStatus(cluster);
-          const clusterStatusLabel = clusterHealth === 'healthy' ? 'Healthy' : clusterHealth === 'warning' ? 'Warning' : 'Unhealthy';
-          const clusterStatusIcon = clusterHealth === 'healthy' ? (
-            <Tooltip title="All nodes healthy"><CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18, mr: 1 }} aria-label="Healthy" /></Tooltip>
-          ) : clusterHealth === 'warning' ? (
-            <Tooltip title="Some nodes unhealthy"><WarningIcon sx={{ color: '#ffb300', fontSize: 18, mr: 1 }} aria-label="Warning" /></Tooltip>
-          ) : clusterHealth === 'unhealthy' ? (
-            <Tooltip title="All nodes unhealthy"><ErrorIcon sx={{ color: '#f44336', fontSize: 18, mr: 1 }} aria-label="Unhealthy" /></Tooltip>
-          ) : (
-            <Tooltip title="Unknown cluster health"><ErrorIcon sx={{ color: '#bdbdbd', fontSize: 18, mr: 1 }} aria-label="Unknown" /></Tooltip>
-          );
-
           return (
             <Grid item xs={12} sm={12} md={12} key={cluster.id}>
               <Card elevation={4} sx={{
@@ -567,7 +530,7 @@ const ClusterManagement = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <span style={{ width: 12, height: 12, borderRadius: '50%', background: clusterHealth === 'healthy' ? '#48BB78' : (clusterHealth === 'warning' ? '#ffb300' : '#f44336'), display: 'inline-block', marginRight: 8 }} />
-                        <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#222', mr: 2 }}>{cluster.name}</Typography>
+                        <Typography variant="h3" sx={{ fontWeight: 600, fontSize: { xs: '1.1rem', sm: '1.3rem' }, color: '#222', mr: 2 }}>{cluster.name}</Typography>
                       </Box>
                       <Box className="cluster-status" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14, color: textSecondary }}>
                         <span className="status-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#48BB78', display: 'inline-block', marginRight: 4 }} />
@@ -587,20 +550,20 @@ const ClusterManagement = () => {
                       size="small"
                     />
                   </Box>
-                  <Typography variant="body2" sx={{ color: textPrimary, mb: 1 }}>
+                  <Typography variant="body1" sx={{ mb: 1 }}>
                     <b>Algorithm:</b> {cluster.algorithm}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: textPrimary, mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
                     <b>Health Check:</b> <span style={{ color: textSecondary }}>{cluster.healthCheckEndpoint}</span> (every {cluster.healthCheckFrequency} seconds)
                   </Typography>
-                  <Typography variant="body2" sx={{ color: textPrimary, mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
                     <b>Nodes:</b> {cluster.nodes.length}
                   </Typography>
                   {/* Node List as Table */}
                   <Box sx={{ overflowX: 'auto', mb: 2 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: colors.timberwolf }}>
+                      <thead style={{ position: 'sticky', top: 0, background: colors.timberwolf, zIndex: 1 }}>
+                        <tr>
                           <th style={{ padding: 8, textAlign: 'center' }}>
                             <Tooltip title="Select all nodes">
                               <Checkbox
@@ -683,20 +646,14 @@ const ClusterManagement = () => {
                               </td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>
                                 <Tooltip title={node.healthStatus.charAt(0).toUpperCase() + node.healthStatus.slice(1)}>
-                        <Chip
-                          label={node.healthStatus}
-                          sx={node.healthStatus === 'healthy' ? healthyStatus : errorStatus}
-                          size="small"
-                          style={{ textTransform: 'capitalize' }}
-                                    aria-label={node.healthStatus}
-                                  />
+                                  {getStatusBadge(node.healthStatus)}
                                 </Tooltip>
                               </td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.connections === 'number' ? node.connections : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle' }}>{typeof node.errorRate === 'number' ? `${node.errorRate.toFixed(2)}%` : 'N/A'}</td>
                               <td style={{ padding: 8, verticalAlign: 'middle', textAlign: 'center' }}>
-                                <Box className={styles['action-group']}>
-                        <Tooltip title="Check Health">
+                                <Box>
+                                  <Tooltip title="Check Health">
                                     <span>
                                       <IconButton edge="end" onClick={() => handleCheckHealth(cluster.id, node.id)} sx={refreshIcon} disabled={checkingNodeId === node.id} aria-label="Check Health">
                                         {checkingNodeId === node.id ? <CircularProgress size={20} /> : <RefreshIcon />}
@@ -704,15 +661,15 @@ const ClusterManagement = () => {
                                     </span>
                                   </Tooltip>
                                   <Tooltip title="Drain Node">
-                                    <IconButton edge="end" onClick={() => handleDrainNode(cluster.id, node.id)} className={styles['secondary-action']} aria-label="Drain Node">
+                                    <IconButton edge="end" onClick={() => handleDrainNode(cluster.id, node.id)} aria-label="Drain Node">
                                       <HealthAndSafetyIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Remove Node">
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Remove Node">
                                     <IconButton edge="end" onClick={() => handleDeleteNode(cluster.id, node.id)} sx={deleteIcon} aria-label="Remove Node">
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Tooltip>
                                 </Box>
                               </td>
                               <td style={{ textAlign: 'center' }}>
@@ -721,16 +678,7 @@ const ClusterManagement = () => {
                                 </IconButton>
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <button
-                                  type="button"
-                                  className="row-link"
-                                  onClick={() => navigate(`/clusters/${cluster.id}/nodes/${node.id}`)}
-                                  tabIndex={0}
-                                  aria-label="View node details"
-                                  style={{ background: 'none', border: 'none', color: colors.primary, cursor: 'pointer', fontWeight: 600 }}
-                                >
-                                  View
-                                </button>
+                                {/* View node details */}
                               </td>
                             </tr>
                             <tr key={`${node.id}-expanded`}>
@@ -738,7 +686,7 @@ const ClusterManagement = () => {
                                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                   <Box sx={{ p: 2, background: '#f9f6f2', borderBottom: `1px solid ${colors.timberwolf}` }}>
                                     <Typography variant="body2">Detailed node metrics coming soon...</Typography>
-                  </Box>
+                                  </Box>
                                 </Collapse>
                               </td>
                             </tr>
@@ -747,11 +695,11 @@ const ClusterManagement = () => {
                       </tbody>
                     </table>
                   </Box>
-                  <Box className={styles['action-group']} sx={{ mb: 2, justifyContent: 'flex-end' }}>
-                    <Button className={styles['primary-action']} onClick={() => { setSelectedCluster(cluster.id); setOpenNodeDialog(true); }} startIcon={<AddIcon />} aria-label="Add Node">Add Node</Button>
-                    <Button className={styles['secondary-action']} onClick={() => handleTestAllNodes(cluster.id)} startIcon={<RefreshIcon />} aria-label="Test All Nodes">Test All Nodes</Button>
-                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} onClick={() => handleBulkDrain(cluster.id)} aria-label="Drain Selected">Drain Selected</Button>
-                    <Button className={styles['secondary-action']} disabled={Object.values(selectedNodes).filter(Boolean).length === 0} color="error" onClick={() => handleBulkDelete(cluster.id)} aria-label="Delete Selected">Delete Selected</Button>
+                  <Box sx={{ mb: 2, justifyContent: 'flex-end' }}>
+                    <Button onClick={() => { setSelectedCluster(cluster.id); setOpenNodeDialog(true); }} startIcon={<AddIcon />} aria-label="Add Node">Add Node</Button>
+                    <Button onClick={() => handleTestAllNodes(cluster.id)} startIcon={<RefreshIcon />} aria-label="Test All Nodes">Test All Nodes</Button>
+                    <Button disabled={Object.values(selectedNodes).filter(Boolean).length === 0} onClick={() => handleBulkDrain(cluster.id)} aria-label="Drain Selected">Drain Selected</Button>
+                    <Button disabled={Object.values(selectedNodes).filter(Boolean).length === 0} color="error" onClick={() => handleBulkDelete(cluster.id)} aria-label="Delete Selected">Delete Selected</Button>
                   </Box>
                   <ClusterTabs
                     cluster={cluster}
@@ -942,11 +890,6 @@ const ClusterManagement = () => {
               {error}
             </Typography>
           )}
-          {success && (
-            <Typography color="success" sx={{ mt: 2 }}>
-              {success}
-            </Typography>
-          )}
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
           <Button onClick={() => setOpenClusterDialog(false)} sx={secondaryButton} disabled={isCreating}>
@@ -1065,6 +1008,19 @@ const ClusterManagement = () => {
           {snackbar.message}
         </MuiAlert>
       </Snackbar>
+
+      <style>
+        {`
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(25, 118, 210, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+}
+.pulse {
+  animation: pulse 1.2s infinite;
+}
+`}
+      </style>
     </Box>
   );
 };

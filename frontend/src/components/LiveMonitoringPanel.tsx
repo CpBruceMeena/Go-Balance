@@ -1,9 +1,13 @@
-import type React from 'react';
+import React from 'react';
 import { useState, useEffect } from 'react';
-import { Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Slider, Typography, Button, Grid } from '@mui/material';
+import { Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Slider, Typography, Button, Grid, ToggleButton, ToggleButtonGroup, DialogActions, TextField } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SettingsIcon from '@mui/icons-material/Settings';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import LinearProgress from '@mui/material/LinearProgress';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -16,14 +20,18 @@ import {
   Tooltip as ChartTooltip,
   Legend
 } from 'chart.js';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import type { Dayjs } from 'dayjs';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, ChartTooltip, Legend);
 
 // Mock data for demonstration
 const mockNodes = [
-  { id: '1', url: 'http://127.0.0.1:3001', requests: 120, success: 115, failure: 5, cpu: 32, memory: 60, connections: 10 },
-  { id: '2', url: 'http://127.0.0.1:3002', requests: 80, success: 75, failure: 5, cpu: 45, memory: 50, connections: 7 },
-  { id: '3', url: 'http://127.0.0.1:3000', requests: 100, success: 98, failure: 2, cpu: 28, memory: 40, connections: 5 },
+  { id: '1', url: 'http://127.0.0.1:3001', requests: 120, success: 115, failure: 5, cpu: 32, memory: 60, connections: 10, responseTime: 110 },
+  { id: '2', url: 'http://127.0.0.1:3002', requests: 80, success: 75, failure: 5, cpu: 45, memory: 50, connections: 7, responseTime: 120 },
+  { id: '3', url: 'http://127.0.0.1:3000', requests: 100, success: 98, failure: 2, cpu: 28, memory: 40, connections: 5, responseTime: 105 },
 ];
 
 const defaultIntervals = [2, 5, 10, 30];
@@ -37,6 +45,7 @@ export interface NodeMetric {
   cpu: number;
   memory: number;
   connections: number;
+  responseTime?: number;
 }
 
 interface LiveMonitoringPanelProps {
@@ -70,6 +79,19 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
     bandwidth: [],
     labels: [],
   });
+
+  const QUICK_OPTIONS = [
+    { label: '5m', value: '5m' },
+    { label: '30m', value: '30m' },
+    { label: '1h', value: '1h' },
+    { label: 'Today', value: 'today' },
+    { label: 'This week', value: 'week' },
+  ];
+  const [quickRange, setQuickRange] = React.useState('1h');
+  const [customOpen, setCustomOpen] = React.useState(false);
+  const [customStart, setCustomStart] = React.useState<Dayjs | null>(null);
+  const [customEnd, setCustomEnd] = React.useState<Dayjs | null>(null);
+  const [selectedRange, setSelectedRange] = React.useState('1h');
 
   useEffect(() => {
     // Simulate different data for each interval
@@ -255,11 +277,149 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
     ],
   };
 
+  // Card-based metrics grid (mock data for now)
+  const totalRequests = nodes.reduce((a, b) => a + (b.requests || 0), 0);
+  const avgRespTime = nodes.length ? Math.round(nodes.reduce((a, b) => a + (b.responseTime || 0), 0) / nodes.length) : 0;
+  const errorRate = nodes.length ? (nodes.reduce((a, b) => a + (b.failure || 0), 0) / totalRequests) * 100 : 0;
+  const cpuAvg = nodes.length ? Math.round(nodes.reduce((a, b) => a + (b.cpu || 0), 0) / nodes.length) : 0;
+  const memoryAvg = nodes.length ? Math.round(nodes.reduce((a, b) => a + (b.memory || 0), 0) / nodes.length) : 0;
+  const trendUp = true; // mock trend
+
+  // Sparkline data (mock)
+  const sparkRequests = [100, 120, 110, 130, 125, 140, 135];
+  const sparkRespTime = [120, 115, 118, 122, 117, 119, 116];
+  const sparkError = [1, 2, 1.5, 2.5, 1.2, 1.8, 1.6];
+  const sparkCPU = [30, 32, 31, 35, 33, 36, 34];
+
+  const sparkOptions = (color: string) => ({
+    responsive: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    elements: { point: { radius: 0 }, line: { borderColor: color, backgroundColor: 'rgba(0,0,0,0)' } },
+    scales: { x: { display: false }, y: { display: false } },
+  });
+
   return (
     <Box sx={{ mb: 4, p: 2, background: '#fff', borderRadius: 2, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }}>
-      <Typography variant="subtitle2" sx={{ mb: 2, textAlign: 'right', color: 'var(--text-secondary)' }}>
-        Interval: {interval}
-      </Typography>
+      {/* Time Range Selector */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
+        <ToggleButtonGroup
+          value={quickRange}
+          exclusive
+          onChange={(_, val) => {
+            if (val) {
+              setQuickRange(val);
+              setSelectedRange(val);
+            }
+          }}
+          size="small"
+          sx={{ background: '#f5f5f5', borderRadius: 2 }}
+        >
+          {QUICK_OPTIONS.map(opt => (
+            <ToggleButton value={opt.value} key={opt.value}>{opt.label}</ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+        <Button variant="outlined" size="small" onClick={() => setCustomOpen(true)} sx={{ ml: 1 }}>
+          Custom…
+        </Button>
+        <Typography variant="body2" sx={{ ml: 2, color: 'var(--text-secondary)' }}>
+          Selected: {selectedRange === 'custom' && customStart && customEnd ? `${customStart.format('YYYY-MM-DD HH:mm')} - ${customEnd.format('YYYY-MM-DD HH:mm')}` : selectedRange}
+        </Typography>
+        <Typography variant="body2" sx={{ ml: 2, color: 'var(--text-secondary)' }}>
+          Refresh: {refreshInterval}s
+        </Typography>
+      </Box>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Dialog open={customOpen} onClose={() => setCustomOpen(false)}>
+          <DialogTitle>Select Custom Range</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 320 }}>
+            <DatePicker
+              label="Start"
+              value={customStart}
+              onChange={value => setCustomStart(value as Dayjs | null)}
+              maxDate={customEnd || undefined}
+              renderInput={(params) => <TextField {...params} size="small" />}
+            />
+            <DatePicker
+              label="End"
+              value={customEnd}
+              onChange={value => setCustomEnd(value as Dayjs | null)}
+              minDate={customStart || undefined}
+              renderInput={(params) => <TextField {...params} size="small" />}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCustomOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (customStart && customEnd) {
+                  setSelectedRange('custom');
+                  setCustomOpen(false);
+                }
+              }}
+              disabled={!customStart || !customEnd}
+            >
+              Apply
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </LocalizationProvider>
+      {/* Real-time update indicator */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+        <FiberManualRecordIcon sx={{ color: autoRefresh ? '#4caf50' : '#bdbdbd', fontSize: 16, mr: 1 }} />
+        <Typography variant="caption" sx={{ color: autoRefresh ? '#4caf50' : '#bdbdbd', mr: 2 }}>
+          {autoRefresh ? 'Live' : 'Paused'}
+        </Typography>
+      </Box>
+      {/* Card-based metrics grid */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ p: 2, background: '#e3f2fd', borderRadius: 2, boxShadow: 1, textAlign: 'center' }}>
+            <Typography variant="subtitle2" sx={{ color: '#1976d2', mb: 1 }}>Total Requests</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1976d2' }}>{totalRequests}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+              {trendUp ? <TrendingUpIcon color="success" /> : <TrendingDownIcon color="error" />}
+              <Typography variant="body2" sx={{ color: trendUp ? 'success.main' : 'error.main', ml: 0.5 }}>{trendUp ? '+2%' : '-1%'}</Typography>
+            </Box>
+            <Box sx={{ mt: 1, height: 24 }}>
+              <Line data={{ labels: sparkRequests.map((_, i) => i), datasets: [{ data: sparkRequests, borderColor: '#1976d2', tension: 0.4 }] }} options={sparkOptions('#1976d2')} width={80} height={24} />
+            </Box>
+          </Box>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ p: 2, background: '#fff3e0', borderRadius: 2, boxShadow: 1, textAlign: 'center' }}>
+            <Typography variant="subtitle2" sx={{ color: '#ff9800', mb: 1 }}>Avg Response Time</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#ff9800' }}>{avgRespTime} ms</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 1 }}>
+              {trendUp ? <TrendingUpIcon color="error" /> : <TrendingDownIcon color="success" />}
+              <Typography variant="body2" sx={{ color: trendUp ? 'error.main' : 'success.main', ml: 0.5 }}>{trendUp ? '+5ms' : '-3ms'}</Typography>
+            </Box>
+            <Box sx={{ mt: 1, height: 24 }}>
+              <Line data={{ labels: sparkRespTime.map((_, i) => i), datasets: [{ data: sparkRespTime, borderColor: '#ff9800', tension: 0.4 }] }} options={sparkOptions('#ff9800')} width={80} height={24} />
+            </Box>
+          </Box>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ p: 2, background: '#e8f5e9', borderRadius: 2, boxShadow: 1, textAlign: 'center' }}>
+            <Typography variant="subtitle2" sx={{ color: '#43a047', mb: 1 }}>Error Rate</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#43a047' }}>{errorRate.toFixed(2)}%</Typography>
+            <LinearProgress variant="determinate" value={errorRate} sx={{ height: 8, borderRadius: 5, mt: 1, background: '#c8e6c9', '& .MuiLinearProgress-bar': { background: '#43a047' } }} />
+            <Box sx={{ mt: 1, height: 24 }}>
+              <Line data={{ labels: sparkError.map((_, i) => i), datasets: [{ data: sparkError, borderColor: '#43a047', tension: 0.4 }] }} options={sparkOptions('#43a047')} width={80} height={24} />
+            </Box>
+          </Box>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ p: 2, background: '#f3e5f5', borderRadius: 2, boxShadow: 1, textAlign: 'center' }}>
+            <Typography variant="subtitle2" sx={{ color: '#8e24aa', mb: 1 }}>CPU / Memory</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#8e24aa' }}>{cpuAvg}% / {memoryAvg}%</Typography>
+            <LinearProgress variant="determinate" value={cpuAvg} sx={{ height: 8, borderRadius: 5, mt: 1, background: '#e1bee7', '& .MuiLinearProgress-bar': { background: '#8e24aa' } }} />
+            <Box sx={{ mt: 1, height: 24 }}>
+              <Line data={{ labels: sparkCPU.map((_, i) => i), datasets: [{ data: sparkCPU, borderColor: '#8e24aa', tension: 0.4 }] }} options={sparkOptions('#8e24aa')} width={80} height={24} />
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+      {/* Current Metrics Section */}
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Current Metrics</Typography>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2, gap: 1 }}>
         <Tooltip title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}>
@@ -276,18 +436,35 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
       <Grid container spacing={3}>
         <Grid item xs={12} md={6} lg={3}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Request Distribution</Typography>
-          <Pie data={requestDistData} />
+          <Pie data={requestDistData} options={{
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: { enabled: true, callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}` } },
+            },
+          }} />
         </Grid>
         <Grid item xs={12} md={6} lg={3}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Success/Failure Rate</Typography>
-          <Bar data={successFailData} />
+          <Bar data={successFailData} options={{
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: { enabled: true, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}` } },
+            },
+          }} />
         </Grid>
         <Grid item xs={12} md={6} lg={3}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>CPU/Memory Usage</Typography>
           <Line data={cpuMemData} options={{
             responsive: true,
             interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'top' } },
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: { enabled: true, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } },
+            },
+            elements: {
+              point: { radius: 4, hoverRadius: 7, backgroundColor: '#8e24aa' },
+              line: { backgroundColor: 'rgba(142,36,170,0.2)', borderColor: '#8e24aa', fill: true },
+            },
             scales: {
               y: { type: 'linear', display: true, position: 'left', min: 0, max: 100 },
               y1: { type: 'linear', display: true, position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } },
@@ -296,7 +473,12 @@ const LiveMonitoringPanel: React.FC<LiveMonitoringPanelProps> = ({
         </Grid>
         <Grid item xs={12} md={6} lg={3}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Connections & Error Rate</Typography>
-          <Bar data={connErrData} />
+          <Bar data={connErrData} options={{
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: { enabled: true, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}` } },
+            },
+          }} />
         </Grid>
       </Grid>
       <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>Trends</Typography>
